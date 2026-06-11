@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Monitor Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; padding: 1.5rem; }
+        .alert-warning { border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, 0.1); }
+        .alert-danger { border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .alert-info { border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.1); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">Market Monitor <span class="text-blue-500">MVP</span></h1>
+                <p class="text-slate-400 mt-1" id="last-update">正在獲取實時數據...</p>
+            </div>
+            <div class="flex gap-2">
+                <span class="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-xs font-semibold border border-green-500/20">LIVE</span>
+                <span class="px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-xs font-semibold border border-slate-700">VERSION 1.0</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Macro Indicators -->
+            <div class="lg:col-span-2 space-y-8">
+                <section>
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="globe" class="w-5 h-5 text-blue-400"></i> 全球宏觀數據 (Macro)
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- US10Y -->
+                        <div class="card">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-sm text-slate-400">美債 10 年期殖利率</p>
+                                    <h3 class="text-2xl font-bold mt-1" id="us10y-val">--</h3>
+                                </div>
+                                <span id="us10y-change" class="text-xs font-medium px-2 py-1 rounded">--</span>
+                            </div>
+                            <canvas id="us10y-chart" height="80"></canvas>
+                        </div>
+                        <!-- DXY -->
+                        <div class="card">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-sm text-slate-400">美元指數 (DXY)</p>
+                                    <h3 class="text-2xl font-bold mt-1" id="dxy-val">--</h3>
+                                </div>
+                                <span id="dxy-change" class="text-xs font-medium px-2 py-1 rounded">--</span>
+                            </div>
+                            <canvas id="dxy-chart" height="80"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-green-400"></i> 台灣市場數據 (Taiwan)
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- TWII -->
+                        <div class="card">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-sm text-slate-400">加權指數 (TWII)</p>
+                                    <h3 class="text-2xl font-bold mt-1" id="twii-val">--</h3>
+                                </div>
+                                <span id="twii-change" class="text-xs font-medium px-2 py-1 rounded">--</span>
+                            </div>
+                            <canvas id="twii-chart" height="80"></canvas>
+                        </div>
+                        <!-- TWD -->
+                        <div class="card">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-sm text-slate-400">美元/台幣匯率</p>
+                                    <h3 class="text-2xl font-bold mt-1" id="twd-val">--</h3>
+                                </div>
+                                <span id="twd-change" class="text-xs font-medium px-2 py-1 rounded">--</span>
+                            </div>
+                            <canvas id="twd-chart" height="80"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right: Alerts & Flows -->
+            <div class="space-y-8">
+                <section>
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="bell" class="w-5 h-5 text-yellow-400"></i> 市場警報 (Alerts)
+                    </h2>
+                    <div id="alerts-container" class="space-y-3">
+                        <div class="p-4 text-center text-slate-500 italic">正在分析市場風險...</div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="landmark" class="w-5 h-5 text-purple-400"></i> 籌碼流向 (Flows)
+                    </h2>
+                    <div class="card">
+                        <p class="text-sm text-slate-400 mb-2">外資單日買賣超 (台積電代理)</p>
+                        <h3 class="text-xl font-bold" id="flow-val">--</h3>
+                        <p class="text-xs text-slate-500 mt-2" id="flow-date">--</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function createChart(id, label, data, color) {
+            const ctx = document.getElementById(id).getContext('2d');
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map((_, i) => i),
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        borderWidth: 2,
+                        fill: true,
+                        backgroundColor: color + '10',
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { display: false } }
+                }
+            });
+        }
+
+        function updateUI(data) {
+            document.getElementById('last-update').innerText = `最後更新: ${data.last_update}`;
+
+            // Helper for change colors
+            const setChange = (id, val, pct) => {
+                const el = document.getElementById(id);
+                const isPositive = val >= 0;
+                el.innerText = `${isPositive ? '+' : ''}${val} (${pct}%)`;
+                el.className = `text-xs font-medium px-2 py-1 rounded ${isPositive ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`;
+            };
+
+            // Update Values
+            document.getElementById('us10y-val').innerText = `${data.macro.US10Y.value}%`;
+            setChange('us10y-change', data.macro.US10Y.change, data.macro.US10Y.pct);
+            createChart('us10y-chart', 'US10Y', data.macro.US10Y.history, '#3b82f6');
+
+            document.getElementById('dxy-val').innerText = data.macro.DXY.value;
+            setChange('dxy-change', data.macro.DXY.change, data.macro.DXY.pct);
+            createChart('dxy-chart', 'DXY', data.macro.DXY.history, '#6366f1');
+
+            document.getElementById('twii-val').innerText = data.taiwan.TWII.value.toLocaleString();
+            setChange('twii-change', data.taiwan.TWII.change, data.taiwan.TWII.pct);
+            createChart('twii-chart', 'TWII', data.taiwan.TWII.history, '#10b981');
+
+            document.getElementById('twd-val').innerText = data.taiwan.TWD.value;
+            setChange('twd-change', data.taiwan.TWD.change, data.taiwan.TWD.pct);
+            createChart('twd-chart', 'TWD', data.taiwan.TWD.history, '#f59e0b');
+
+            // Update Flows
+            const flowVal = data.taiwan.ForeignFlow.value;
+            const flowEl = document.getElementById('flow-val');
+            flowEl.innerText = `${(flowVal / 1000000).toFixed(2)} M 股`;
+            flowEl.className = `text-xl font-bold ${flowVal >= 0 ? 'text-green-500' : 'text-red-500'}`;
+            document.getElementById('flow-date').innerText = `基準日期: ${data.taiwan.ForeignFlow.date || '--'}`;
+
+            // Update Alerts
+            const alertContainer = document.getElementById('alerts-container');
+            alertContainer.innerHTML = '';
+            if (data.alerts.length === 0) {
+                alertContainer.innerHTML = '<div class="p-4 text-center text-green-500 bg-green-500/5 rounded-lg border border-green-500/20">市場環境目前相對穩定</div>';
+            } else {
+                data.alerts.forEach(alert => {
+                    const div = document.createElement('div');
+                    div.className = `p-4 rounded-lg text-sm font-medium alert-${alert.level}`;
+                    div.innerText = alert.msg;
+                    alertContainer.appendChild(div);
+                });
+            }
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+                updateUI(data);
+            } catch (err) {
+                console.error('Fetch error:', err);
+                document.getElementById('last-update').innerText = '數據獲取失敗，請稍後再試。';
+            }
+        }
+
+        fetchData();
+        setInterval(fetchData, 60000); // Auto-refresh every minute
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+services:
+  app:
+    build: ./backend
+    ports:
+      - "16888:6666"
+    environment:
+      - APP_PORT=6666
