@@ -4,11 +4,12 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
+import pandas as pd
+import numpy as np
 from FinMind.data import DataLoader
 
-app = FastAPI(title="Market Monitor MVP")
+app = FastAPI(title="全球金融大數據終端機")
 
-# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,74 +19,121 @@ app.add_middleware(
 
 dl = DataLoader()
 
-# Symbols for Yahoo Finance
+# Expanded Global Symbols with Traditional Chinese Names
 SYMBOLS = {
-    "US10Y": "^TNX",
-    "DXY": "DX-Y.NYB",
-    "TWII": "^TWII",
-    "TWD": "TWD=X"
+    "台股加權": "^TWII",
+    "納斯達克": "^IXIC",      # Nasdaq (US)
+    "標普500": "^GSPC",      # S&P 500 (US)
+    "日經225": "^N225",     # Nikkei 225 (JP)
+    "德國DAX": "^GDAXI",     # DAX (EU/DE)
+    "印度NIFTY": "^NSEI",    # Nifty 50 (IN)
+    "澳洲ASX": "^AXJO",     # ASX 200 (AU)
+    "新加坡STI": "^STI",       # Straits Times (SG)
+    "比特幣": "BTC-USD",
+    "美元指數": "DX-Y.NYB",
+    "美債10Y": "^TNX",
+    "台幣匯率": "TWD=X"
 }
 
-def get_yfinance_data(symbol):
-    try:
-        ticker = yf.Ticker(symbol)
-        data = ticker.history(period="5d")
-        if not data.empty:
-            history = [round(v, 2) for v in data['Close'].tolist()]
-            current = history[-1]
-            prev = history[-2] if len(history) > 1 else current
+class MarketDataOrchestrator:
+    def __init__(self):
+        self.log_feed = []
+
+    def add_log(self, msg):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_feed.insert(0, f"[{timestamp}] {msg}")
+        self.log_feed = self.log_feed[:10]
+
+    def clean_series(self, series):
+        """Replace NaN/Inf with None for JSON compliance."""
+        return [float(x) if np.isfinite(x) else None for x in series]
+
+    def fetch_timeframe_data(self, name, symbol, period="2y"):
+        try:
+            self.add_log(f"正在同步 {name} ({symbol})...")
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period=period)
+            if df.empty:
+                df = ticker.history(period="1mo")
+                if df.empty:
+                    self.add_log(f"同步失敗: {name} 無數據")
+                    return None
+            
+            close = df['Close'].ffill()
+            
+            # Timeframe series
+            daily = self.clean_series(close.tail(30).tolist())
+            weekly = self.clean_series(close.resample('W').last().tail(20).tolist())
+            monthly = self.clean_series(close.resample('ME').last().tail(12).tolist())
+            quarterly = self.clean_series(close.resample('QE').last().tail(8).tolist())
+            
+            current = round(float(close.iloc[-1]), 2)
+            if not np.isfinite(current): current = 0
+            
+            prev = float(close.iloc[-2]) if len(df) > 1 else current
+            if not np.isfinite(prev): prev = current
+            
             change = round(current - prev, 2)
-            pct_change = round((change / prev) * 100, 2) if prev != 0 else 0
-            return {"value": current, "history": history, "change": change, "pct": pct_change}
-    except Exception as e:
-        print(f"Error fetching {symbol}: {e}")
-    return {"value": 0, "history": [0,0,0,0,0], "change": 0, "pct": 0}
+            pct = round((change / prev) * 100, 2) if prev != 0 else 0
+            
+            self.add_log(f"成功更新: {name}")
+            return {
+                "name": name,
+                "current": current,
+                "change": change,
+                "pct": pct,
+                "series": {
+                    "daily": daily,
+                    "weekly": weekly,
+                    "monthly": monthly,
+                    "quarterly": quarterly
+                }
+            }
+        except Exception as e:
+            self.add_log(f"同步錯誤 {name}: {str(e)}")
+            return None
 
-def get_finmind_taiwan_indicators():
-    try:
-        start_date = (datetime.now() - timedelta(days=10)).strftime('%Y-%m-%d')
-        df_inv = dl.taiwan_stock_institutional_investors(stock_id='2330', start_date=start_date)
-        if not df_inv.empty:
-            foreign_data = df_inv[df_inv['name'] == 'Foreign_Investor']
-            if not foreign_data.empty:
-                latest = foreign_data.iloc[-1]
-                net_buy = int(latest['buy'] - latest['sell'])
-                return {"value": net_buy, "date": latest['date'], "source": "FinMind"}
-    except Exception as e:
-        print(f"FinMind error: {e}")
-    return {"value": 0, "error": "Failed to fetch"}
+    def get_finmind_flow(self):
+        try:
+            start_date = (datetime.now() - timedelta(days=10)).strftime('%Y-%m-%d')
+            df = dl.taiwan_stock_institutional_investors(stock_id='2330', start_date=start_date)
+            if not df.empty:
+                foreign = df[df['name'] == 'Foreign_Investor']
+                if not foreign.empty:
+                    latest = foreign.iloc[-1]
+                    return {"value": int(latest['buy'] - latest['sell']), "date": latest['date']}
+        except Exception as e:
+            self.add_log(f"FinMind 數據源錯誤: {str(e)}")
+        return {"value": 0, "date": "--"}
 
-@app.get("/api/dashboard")
-def get_dashboard_data():
-    macro = {
-        "US10Y": get_yfinance_data(SYMBOLS["US10Y"]),
-        "DXY": get_yfinance_data(SYMBOLS["DXY"]),
-        "CPI": {"value": 3.1, "change": 0.1, "note": "Target: 2.0%"},
-    }
-    taiwan = {
-        "TWII": get_yfinance_data(SYMBOLS["TWII"]),
-        "TWD": get_yfinance_data(SYMBOLS["TWD"]),
-        "ForeignFlow": get_finmind_taiwan_indicators()
+orchestrator = MarketDataOrchestrator()
+
+@app.get("/api/terminal")
+def get_terminal_data():
+    orchestrator.add_log("啟動全球大數據管線同步...")
+    
+    main_indices = {}
+    for name, sym in SYMBOLS.items():
+        data = orchestrator.fetch_timeframe_data(name, sym)
+        if data:
+            main_indices[name] = data
+    
+    reports = {
+        "CPI 通膨": {"value": 3.1, "period": "月報", "trend": "持平", "next": "2026-07-12"},
+        "GDP 成長": {"value": 2.1, "period": "季報", "trend": "上升", "next": "2026-08-01"},
+        "M2 貨幣": {"value": 5.4, "period": "月報", "trend": "擴張", "next": "2026-07-20"}
     }
     
-    # Alert Logic based on README
-    alerts = []
-    if macro["US10Y"]["value"] > 4.5:
-        alerts.append({"level": "warning", "msg": "高殖利率警訊：美債 10Y 突破 4.5%，科技股壓力增大。"})
-    if macro["DXY"]["value"] > 105:
-        alerts.append({"level": "warning", "msg": "強勢美元警訊：資金可能回流美國，新興市場承壓。"})
-    if taiwan["ForeignFlow"]["value"] < -10000000:
-        alerts.append({"level": "danger", "msg": "外資大幅提款：外資單日大幅賣超，注意回檔風險。"})
-    if macro["CPI"]["value"] > 3.0:
-        alerts.append({"level": "info", "msg": "通膨維持高位：CPI 仍高於 3%，降息預期可能延後。"})
-
+    flows = orchestrator.get_finmind_flow()
+    orchestrator.add_log("數據管線聚合完成。")
+    
     return {
-        "macro": macro,
-        "taiwan": taiwan,
-        "alerts": alerts,
-        "last_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "indices": main_indices,
+        "reports": reports,
+        "flows": flows,
+        "logs": orchestrator.log_feed,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
-# Serve static files
 os.makedirs("static", exist_ok=True)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
