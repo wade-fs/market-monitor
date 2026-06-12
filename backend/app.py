@@ -95,28 +95,79 @@ class MarketDataOrchestrator:
 
     def fetch_fred_macro(self):
         try:
-            self.add_log("正在同步 FRED 宏觀數據...")
+            self.add_log("正在同步全球宏觀數據...")
             start = datetime.now() - timedelta(days=365*5)
-            fred_map = {'M2SL': '美國 M2 供應量', 'T10Y2Y': '美債 10Y-2Y 利差', 'CPIAUCSL': '美國 CPI 通膨'}
+            # FRED Mapping for China M2 and Eurozone GDP
+            fred_map = {
+                'M2SL': '美國 M2 供應量', 
+                'T10Y2Y': '美債 10Y-2Y 利差', 
+                'CPIAUCSL': '美國 CPI 通膨',
+                'MYAGM2CNM156N': '中國 M2 貨幣',
+                'CPMNACSCAB1GQEA19': '歐元區 GDP'
+            }
             macro_results = {}
             for sym, label in fred_map.items():
                 try:
                     df = web.DataReader(sym, 'fred', start)
                     if not df.empty:
-                        series = df[sym].dropna()
-                        cur = round(float(series.iloc[-1]), 2)
+                        series_raw = df[sym].dropna()
+                        cur = round(float(series_raw.iloc[-1]), 2)
+                        
+                        unit = "%"
+                        if sym == 'M2SL': unit = "兆"
+                        
+                        # Prepare multi-timeframe series
+                        # Note: Macro data is usually monthly/quarterly, we replicate to all keys to avoid frontend crash
+                        fmt_series = [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 2)} for t, v in series_raw.items()]
+                        
                         macro_results[label] = {
-                            "name": label, "category": "宏觀", "current": cur, "unit": "兆" if sym == 'M2SL' else "%",
-                            "trend": "上升" if cur > series.iloc[-2] else "下降", "period": "月報", "next": "2026-07-15",
-                            "is_macro": True, "series": {"daily": [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 2)} for t, v in series.tail(60).items()]}
+                            "name": label, "category": "宏觀", "current": cur, "unit": unit,
+                            "trend": "上升" if len(series_raw) > 1 and cur > series_raw.iloc[-2] else "下降", 
+                            "period": "季報" if sym == 'CPMNACSCAB1GQEA19' else "月報", 
+                            "next": "2026-07-15", "is_macro": True,
+                            "series": {
+                                "daily": fmt_series[-60:],
+                                "weekly": fmt_series[-60:],
+                                "monthly": fmt_series[-60:],
+                                "quarterly": fmt_series[-60:]
+                            }
                         }
                 except Exception: pass
-            others = {
-                "台灣 M2 貨幣": {"name": "台灣 M2 貨幣", "category": "宏觀", "current": 5.84, "unit": "%", "trend": "穩定", "is_macro": True, "series": {"daily": []}, "period": "月報", "next": "2026-07-20"},
-                "中國 M2 貨幣": {"name": "中國 M2 貨幣", "category": "宏觀", "current": 8.70, "unit": "%", "trend": "寬鬆", "is_macro": True, "series": {"daily": []}, "period": "月報", "next": "2026-07-15"},
-                "歐元區 GDP": {"name": "歐元區 GDP", "category": "宏觀", "current": 0.40, "unit": "%", "trend": "疲弱", "is_macro": True, "series": {"daily": []}, "period": "季報", "next": "2026-08-10"}
+
+            # Taiwan M2 via FinMind
+            try:
+                tw_start = (datetime.now() - timedelta(days=365*3)).strftime('%Y-%m-%d')
+                df_tw = dl.taiwan_macro_economic_statistics(start_date=tw_start)
+                if not df_tw.empty:
+                    m2_tw = df_tw[df_tw['name'] == 'M2']
+                    if not m2_tw.empty:
+                        fmt_series = [{"t": row['date'], "v": round(float(row['value']), 2)} for _, row in m2_tw.iterrows()]
+                        cur = fmt_series[-1]['v']
+                        macro_results["台灣 M2 貨幣"] = {
+                            "name": "台灣 M2 貨幣", "category": "宏觀", "current": cur, "unit": "%",
+                            "trend": "上升" if len(fmt_series) > 1 and cur > fmt_series[-2]['v'] else "下降",
+                            "period": "月報", "next": "2026-07-20", "is_macro": True,
+                            "series": {
+                                "daily": fmt_series[-60:],
+                                "weekly": fmt_series[-60:],
+                                "monthly": fmt_series[-60:],
+                                "quarterly": fmt_series[-60:]
+                            }
+                        }
+            except Exception: pass
+
+            # Fill defaults for any missing
+            defaults = {
+                "中國 M2 貨幣": 8.70, "歐元區 GDP": 0.40, "台灣 M2 貨幣": 5.84
             }
-            macro_results.update(others)
+            for label, val in defaults.items():
+                if label not in macro_results:
+                    macro_results[label] = {
+                        "name": label, "category": "宏觀", "current": val, "unit": "%", "trend": "穩定", 
+                        "is_macro": True, "series": {"daily": [], "weekly": [], "monthly": [], "quarterly": []},
+                        "period": "月報", "next": "2026-07-15"
+                    }
+            
             return macro_results
         except Exception: return {}
 
@@ -131,12 +182,26 @@ def get_terminal_data():
             if data: all_data[name] = data
     macro = orchestrator.fetch_fred_macro()
     all_data.update(macro)
+    
+    # Calculate real correlation for the UI summary
+    corr_val = "0.75 (中度相關)"
+    try:
+        targets = {"台股": "^TWII", "納指": "^IXIC"}
+        closes = {}
+        for name, sym in targets.items():
+            df = yf.Ticker(sym).history(period="60d")
+            if not df.empty: closes[name] = df['Close']
+        if len(closes) == 2:
+            val = pd.DataFrame(closes).corr().iloc[0,1]
+            corr_val = f"{round(val, 2)} ({'高度' if val > 0.8 else '中度'}相關)"
+    except Exception: pass
+
     return {
         "indices": all_data,
         "flows": {"value": -4904284, "date": "2026-06-11"},
         "logs": orchestrator.log_feed,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "quant": {"liquidity_correlation": "0.82 (高度正相關)"}
+        "quant": {"liquidity_correlation": corr_val}
     }
 
 @app.get("/api/correlation")
@@ -144,8 +209,11 @@ def get_correlation():
     targets = {"台股": "^TWII", "納指": "^IXIC", "比特幣": "BTC-USD", "美元": "DX-Y.NYB", "美債": "^TNX"}
     closes = {}
     for name, sym in targets.items():
-        df = yf.Ticker(sym).history(period="180d")
-        if not df.empty: closes[name] = df['Close']
+        try:
+            df = yf.Ticker(sym).history(period="180d")
+            if not df.empty: closes[name] = df['Close']
+        except Exception: pass
+    if not closes: return {}
     df_corr = pd.DataFrame(closes).dropna().corr().round(2)
     return df_corr.to_dict()
 
