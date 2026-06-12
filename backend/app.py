@@ -211,10 +211,14 @@ def get_correlation():
     for name, sym in targets.items():
         try:
             df = yf.Ticker(sym).history(period="180d")
-            if not df.empty: closes[name] = df['Close']
+            if not df.empty: 
+                # Normalize index to date only to align different timezones (Taiwan vs US)
+                df.index = df.index.tz_localize(None).normalize()
+                closes[name] = df['Close']
         except Exception: pass
     if not closes: return {}
-    df_corr = pd.DataFrame(closes).dropna().corr().round(2).fillna(0)
+    # Use ffill to handle minor holiday differences, then dropna for strict intersection
+    df_corr = pd.DataFrame(closes).ffill().dropna().corr().round(2).fillna(0)
     return df_corr.to_dict()
 
 @app.get("/api/institutional")
