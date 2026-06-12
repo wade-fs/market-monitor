@@ -212,6 +212,75 @@ class MarketDataOrchestrator:
 
 orchestrator = MarketDataOrchestrator()
 
+class MacroDashboardOrchestrator:
+    def __init__(self):
+        self.country_map = {
+            "美國": {
+                "Growth": {"GDP YoY": "A191RL1Q225SBEA", "PMI": "ISM/MAN_PMI"}, 
+                "Inflation": {"CPI": "CPIAUCSL", "Core CPI": "CPILFESL"},
+                "Liquidity": {"M2": "M2SL"},
+                "Rates": {"Fed Funds": "FEDFUNDS", "10Y Yield": "^TNX"},
+                "Labor": {"Unemployment": "UNRATE"},
+                "FX": {"DXY": "DX-Y.NYB"},
+                "Asset": {"S&P 500": "^GSPC"}
+            },
+            "台灣": {
+                "Growth": {"GDP Proxy": "^TWII"}, 
+                "Inflation": {"CPI Proxy": "TWD=X"},
+                "Liquidity": {"M2": "MABMM201TWM189S"},
+                "Rates": {"10Y Yield": "TWM10Y=RR"},
+                "Labor": {"Unemployment": "TWMUNR"},
+                "FX": {"USD/TWD": "TWD=X"},
+                "Asset": {"TAIEX": "^TWII"}
+            },
+            "日本": {
+                "Growth": {"Nikkei Proxy": "^N225"},
+                "Inflation": {"CPI": "JPNCPIALLMINMEI"},
+                "FX": {"USD/JPY": "JPY=X"},
+                "Asset": {"Nikkei 225": "^N225"}
+            }
+        }
+
+    def fetch_country_data(self, country):
+        config = self.country_map.get(country, self.country_map["美國"])
+        results = {}
+        for category, indicators in config.items():
+            results[category] = []
+            for name, sym in indicators.items():
+                try:
+                    # Determine source
+                    if sym.startswith('^') or sym.endswith('=X') or 'DX-Y' in sym:
+                        df = yf.Ticker(sym).history(period="1y")
+                        if not df.empty:
+                            series = [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 2)} for t, v in df['Close'].items()]
+                            cur = series[-1]['v']
+                            prev = series[-2]['v'] if len(series) > 1 else cur
+                            results[category].append({
+                                "name": name, "val": cur, "change": round(cur - prev, 2),
+                                "pct": round((cur-prev)/prev*100, 2) if prev != 0 else 0,
+                                "series": series[-20:]
+                            })
+                    else:
+                        df = web.DataReader(sym, 'fred', datetime.now() - timedelta(days=365*2))
+                        if not df.empty:
+                            series_raw = df.iloc[:, 0].dropna()
+                            series = [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 2)} for t, v in series_raw.items()]
+                            cur = series[-1]['v']
+                            prev = series[-2]['v'] if len(series) > 1 else cur
+                            results[category].append({
+                                "name": name, "val": cur, "change": round(cur - prev, 2),
+                                "pct": round((cur-prev)/prev*100, 2) if prev != 0 else 0,
+                                "series": series[-20:]
+                            })
+                except Exception: pass
+        return results
+
+macro_dash = MacroDashboardOrchestrator()
+
+@app.get("/api/macro/dashboard")
+def get_macro_dashboard(country: str = "美國"):
+    return macro_dash.fetch_country_data(country)
+
 @app.get("/api/terminal")
 def get_terminal_data():
     all_data = {}
