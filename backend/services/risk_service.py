@@ -1,4 +1,4 @@
-from config import get_cache
+from services.cache_service import get_cache
 from services.macro_service import COUNTRIES
 
 def calculate_risk_score():
