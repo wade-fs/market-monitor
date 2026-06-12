@@ -278,31 +278,38 @@ class MacroDashboardOrchestrator:
         self.dash_cache = PersistentCache("macro_dashboard.json", expiry_hours=24)
         self.country_map = {
             "美國": {
-                "Growth": {"GDP YoY": "A191RL1Q225SBEA", "PMI": "ISM/MAN_PMI"}, 
-                "Inflation": {"CPI": "CPIAUCSL", "Core CPI": "CPILFESL"},
-                "Liquidity": {"M2": "M2SL"},
-                "Rates": {"Fed Funds": "FEDFUNDS", "10Y Yield": "^TNX"},
-                "Labor": {"Unemployment": "UNRATE"},
+                "Growth": {"GDP YoY": "A191RL1Q225SBEA", "PMI": "MANPMI", "Retail Sales": "RETAILIRSA"}, 
+                "Inflation": {"CPI": "CPIAUCSL", "Core CPI": "CPILFESL", "PPI": "PPIACO"},
+                "Liquidity": {"M2": "M2SL", "Fed Balance Sheet": "WALCL"},
+                "Rates": {"Fed Funds": "FEDFUNDS", "10Y Yield": "^TNX", "2Y Yield": "^IRX"},
+                "Labor": {"Unemployment": "UNRATE", "Nonfarm Payrolls": "PAYEMS"},
+                "Trade": {"Exports": "EXPGS", "Imports": "IMPGS", "Trade Balance": "NETEXP"},
                 "FX": {"DXY": "DX-Y.NYB"},
-                "Asset": {"S&P 500": "^GSPC", "Nasdaq": "^IXIC", "US 10Y": "^TNX"}
+                "Asset": {"S&P 500": "^GSPC", "Nasdaq": "^IXIC", "VIX": "^VIX"}
             },
             "台灣": {
-                "Growth": {"GDP Proxy": "^TWII"}, 
-                "Inflation": {"CPI Proxy": "TWD=X"},
-                "Liquidity": {"M2": "MABMM201TWM189S"},
-                "Rates": {"10Y Yield": "TWM10Y=RR"},
+                "Growth": {"GDP Proxy": "^TWII", "Export Orders": "TWMORDERS"}, 
+                "Inflation": {"CPI": "TWCPIALLMINMEI"},
+                "Liquidity": {"M2": "MABMM201TWM189S", "M1B": "M1B_TW"},
+                "Rates": {"10Y Yield": "TWM10Y=RR", "Policy Rate": "TWINTRATE"},
                 "Labor": {"Unemployment": "TWMUNR"},
+                "Trade": {"Exports": "TWNEXP", "Imports": "TWNIMP"},
                 "FX": {"USD/TWD": "TWD=X"},
-                "Asset": {"TAIEX": "^TWII", "台灣 50": "0050.TW"}
+                "Asset": {"TAIEX": "^TWII", "Taiwan 50": "0050.TW"}
             },
             "日本": {
-                "Growth": {"Nikkei Proxy": "^N225"},
-                "Inflation": {"CPI": "JPNCPIALLMINMEI"},
+                "Growth": {"Nikkei Proxy": "^N225", "PMI": "JPNMANPMI"},
+                "Inflation": {"CPI": "JPNCPIALLMINMEI", "Core CPI": "JPNCPICORMINMEI"},
+                "Liquidity": {"M2": "MABMM201JPNM189S"},
+                "Rates": {"BOJ Policy Rate": "JPNINTRATEM", "JGB 10Y": "JPN10Y=RR"},
+                "Trade": {"Exports": "JPNEXP", "Imports": "JPNIMP"},
                 "FX": {"USD/JPY": "JPY=X"},
                 "Asset": {"Nikkei 225": "^N225", "TOPIX": "^TPX"}
             },
             "新加坡": {
-                "Growth": {"STI Proxy": "^STI"},
+                "Growth": {"GDP YoY": "SGPGDPYOY", "STI Proxy": "^STI"},
+                "Inflation": {"CPI": "SGPCPIALLMINMEI"},
+                "Liquidity": {"M2": "MABMM201SGP189S"},
                 "FX": {"USD/SGD": "SGD=X"},
                 "Asset": {"STI Index": "^STI"}
             }
