@@ -3,113 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全球金融大數據終端機</title>
+    <title>全球金融大數據量化終端</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Noto+Sans+TC:wght@400;700&display=swap');
-        :root { --neon-green: #00ff41; --neon-blue: #00d2ff; --dark-bg: #050505; --panel-bg: #111111; }
+        :root { --neon-green: #00ff41; --neon-blue: #00d2ff; --neon-purple: #bc13fe; --dark-bg: #050505; --panel-bg: #111111; }
         body { font-family: 'Noto Sans TC', sans-serif; background-color: var(--dark-bg); color: #e2e8f0; overflow: hidden; }
         .mono { font-family: 'JetBrains Mono', monospace; }
         .panel { background: var(--panel-bg); border: 1px solid #222; border-radius: 4px; }
         .terminal-green { color: var(--neon-green); text-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
         .terminal-blue { color: var(--neon-blue); text-shadow: 0 0 5px rgba(0, 210, 255, 0.5); }
+        .terminal-purple { color: var(--neon-purple); text-shadow: 0 0 5px rgba(188, 19, 254, 0.5); }
         
-        /* Horizontal Step Ticker Styles */
-        .ticker-container { background: #000; border-bottom: 1px solid #333; height: 36px; overflow: hidden; position: relative; width: 100%; display: flex; align-items: center; }
+        .ticker-container { background: #000; border-bottom: 1px solid #333; height: 40px; overflow: hidden; display: flex; align-items: center; width: 100%; position: relative; }
         .ticker-track { display: flex; align-items: center; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); height: 100%; }
-        /* 10vw means each item takes exactly 1/10th of the viewport width */
-        .ticker-item { width: 10vw; flex-shrink: 0; padding: 0 10px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid #222; }
+        .ticker-item { width: 10vw; flex-shrink: 0; padding: 0 10px; font-size: 11px; white-space: nowrap; overflow: hidden; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid #222; }
         .ticker-item .val-row { display: flex; justify-content: space-between; align-items: center; }
 
-        .tab-active { border-bottom: 2px solid var(--neon-blue); color: var(--neon-blue); }
+        .tab-active { border-bottom: 3px solid var(--neon-blue); color: var(--neon-blue); }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #333; }
     </style>
 </head>
 <body class="h-screen flex flex-col">
     <!-- Single-Row Horizontal Step Ticker -->
-    <div class="ticker-container" id="ticker-wrap">
+    <div class="ticker-container">
         <div class="ticker-track" id="track-1">
-            <div class="ticker-item mono text-zinc-500 italic">正在初始化數據...</div>
+            <div class="ticker-item mono text-zinc-500 italic" style="width:100vw">正在初始化全球量化數據管線...</div>
         </div>
     </div>
 
     <!-- Header -->
-    <header class="p-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/20">
+    <header class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/20">
         <div class="flex items-center gap-4">
-            <h1 class="text-lg font-bold tracking-tighter terminal-blue flex items-center gap-2">
-                <i data-lucide="terminal" class="w-5 h-5"></i> 全球金融大數據終端 v2.2
+            <h1 class="text-2xl font-bold tracking-tighter terminal-purple flex items-center gap-2">
+                <i data-lucide="zap" class="w-8 h-8"></i> 量化宏觀終端 <span class="text-xs terminal-blue mono">HENREN STYLE v3.0</span>
             </h1>
-            <div class="px-2 py-0.5 border border-green-500/30 text-[9px] terminal-green bg-green-500/5 mono">系統狀態: 在線監控中</div>
+            <div class="px-3 py-1 border border-green-500/30 text-xs terminal-green bg-green-500/5 mono rounded">LIQUIDITY: MONITORING</div>
         </div>
-        <div class="flex items-center gap-6 mono text-[10px] text-zinc-500">
-            <div>下次同步: <span id="refresh-timer" class="text-zinc-300">15s</span></div>
-            <div id="last-update">--</div>
+        <div class="flex items-center gap-6 mono text-sm text-zinc-500">
+            <div>流動性相關性: <span id="corr-val" class="terminal-blue">--</span></div>
+            <div>NEXT SYNC: <span id="refresh-timer" class="text-zinc-300">15s</span></div>
         </div>
     </header>
 
-    <main class="flex-1 grid grid-cols-12 gap-1 p-1 overflow-hidden">
+    <main class="flex-1 grid grid-cols-12 gap-2 p-2 overflow-hidden">
         <!-- Left Pane -->
-        <div class="col-span-12 lg:col-span-3 flex flex-col gap-1 h-full overflow-hidden">
-            <div class="p-2 panel flex-1 overflow-y-auto flex flex-col">
-                <h2 class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <i data-lucide="activity" class="w-4 h-4"></i> 全球市場實時概況
+        <div class="col-span-12 lg:col-span-3 flex flex-col gap-2 h-full overflow-hidden">
+            <div class="p-3 panel flex-1 overflow-y-auto flex flex-col">
+                <h2 class="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i data-lucide="activity" class="w-5 h-5"></i> 市場實時資產
                 </h2>
-                <!-- Category Tabs -->
-                <div class="flex gap-2 mb-2 border-b border-zinc-800 pb-2">
-                    <button onclick="switchCategory('股市')" class="cat-btn text-xs px-2 py-1 rounded bg-zinc-800 text-white" id="cat-股市">股市</button>
-                    <button onclick="switchCategory('期匯')" class="cat-btn text-xs px-2 py-1 rounded text-zinc-500 hover:text-white" id="cat-期匯">期匯</button>
-                    <button onclick="switchCategory('數字貨幣')" class="cat-btn text-xs px-2 py-1 rounded text-zinc-500 hover:text-white" id="cat-數字貨幣">數字貨幣</button>
+                <div class="flex gap-2 mb-3 border-b border-zinc-800 pb-3">
+                    <button onclick="switchCategory('股市')" class="cat-btn text-sm px-3 py-1.5 rounded bg-zinc-800 text-white font-bold" id="cat-股市">股市</button>
+                    <button onclick="switchCategory('期匯')" class="cat-btn text-sm px-3 py-1.5 rounded text-zinc-500 hover:text-white font-bold" id="cat-期匯">期匯</button>
+                    <button onclick="switchCategory('數字貨幣')" class="cat-btn text-sm px-3 py-1.5 rounded text-zinc-500 hover:text-white font-bold" id="cat-數字貨幣">數字貨幣</button>
                 </div>
-                <!-- Live Monitor List -->
-                <div id="live-monitor-container" class="flex-1 flex flex-col border border-zinc-800/50 rounded overflow-y-auto">
-                    <div class="p-4 text-center text-zinc-600 text-sm italic">正在建立數據連接...</div>
-                </div>
+                <div id="live-monitor-container" class="flex-1 flex flex-col border border-zinc-800/50 rounded overflow-y-auto"></div>
             </div>
-            <div class="p-3 panel h-32 flex flex-col justify-center bg-zinc-900/10">
-                <h2 class="text-[9px] font-bold text-zinc-500 uppercase mb-2">三大法人籌碼流向 (2330 代理)</h2>
+            <div class="p-4 panel h-36 flex flex-col justify-center bg-zinc-900/10">
+                <h2 class="text-xs font-bold text-zinc-500 uppercase mb-2">量化籌碼 (2330)</h2>
                 <div class="flex justify-between items-end">
-                    <div class="text-xl font-bold mono" id="flow-val">--</div>
-                    <div class="text-[9px] text-zinc-600" id="flow-date">--</div>
+                    <div class="text-3xl font-bold mono" id="flow-val">--</div>
+                    <div class="text-xs text-zinc-600" id="flow-date">--</div>
                 </div>
             </div>
         </div>
 
         <!-- Center Pane -->
-        <div class="col-span-12 lg:col-span-6 flex flex-col gap-1 h-full overflow-hidden">
+        <div class="col-span-12 lg:col-span-6 flex flex-col gap-2 h-full overflow-hidden">
             <div class="panel flex-1 flex flex-col overflow-hidden">
-                <div class="p-2 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                <div class="p-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
                     <div class="flex items-center gap-4">
-                        <select id="asset-selector" class="bg-zinc-800 text-white text-sm font-bold py-1 px-3 rounded border border-zinc-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none">
-                            <!-- Options populated via JS -->
+                        <select id="asset-selector" class="bg-zinc-800 text-white text-lg font-bold py-2 px-4 rounded border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer appearance-none">
                         </select>
                     </div>
-                    <div class="flex gap-4 text-[9px] mono">
-                        <button onclick="switchTimeframe('daily')" class="tf-btn tab-active" id="btn-daily">日線 (D)</button>
-                        <button onclick="switchTimeframe('weekly')" class="tf-btn" id="btn-weekly">週線 (W)</button>
-                        <button onclick="switchTimeframe('monthly')" class="tf-btn" id="btn-monthly">月線 (M)</button>
-                        <button onclick="switchTimeframe('quarterly')" class="tf-btn" id="btn-quarterly">季線 (Q)</button>
+                    <div class="flex gap-4 mono">
+                        <button onclick="switchTimeframe('daily')" class="tf-btn tab-active text-base font-bold pb-1" id="btn-daily">日線</button>
+                        <button onclick="switchTimeframe('weekly')" class="tf-btn text-base font-bold pb-1 text-zinc-500" id="btn-weekly">週線</button>
+                        <button onclick="switchTimeframe('monthly')" class="tf-btn text-base font-bold pb-1 text-zinc-500" id="btn-monthly">月線</button>
                     </div>
                 </div>
-                <div class="flex-1 p-4 relative overflow-hidden">
+                <div class="flex-1 p-6 relative overflow-hidden">
                     <canvas id="main-chart"></canvas>
                 </div>
             </div>
-            <div class="h-32 panel p-2 bg-black flex flex-col overflow-hidden">
-                <div class="text-[9px] text-zinc-600 uppercase mb-1 flex items-center gap-1">
-                    <i data-lucide="list" class="w-3 h-3"></i> 大數據引擎日誌 (LOG)
+            <div class="h-32 panel p-3 bg-black flex flex-col overflow-hidden">
+                <div class="text-xs text-zinc-600 uppercase mb-1 flex items-center gap-1 font-bold">
+                    <i data-lucide="list" class="w-4 h-4"></i> Data Engineering Console
                 </div>
-                <div id="log-feed" class="flex-1 mono text-[9px] text-zinc-500 overflow-y-auto"></div>
+                <div id="log-feed" class="flex-1 mono text-xs text-zinc-500 overflow-y-auto"></div>
             </div>
         </div>
 
         <!-- Right Pane -->
-        <div class="col-span-12 lg:col-span-3 flex flex-col gap-1 h-full overflow-hidden">
+        <div class="col-span-12 lg:col-span-3 flex flex-col gap-2 h-full overflow-hidden">
             <div class="p-3 panel flex-1 overflow-y-auto">
-                <h2 class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <i data-lucide="database" class="w-3 h-3"></i> 宏觀經濟情報分析
+                <h2 class="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i data-lucide="globe" class="w-5 h-5 text-purple-400"></i> FRED 宏觀量化曲線
                 </h2>
                 <div id="macro-container" class="space-y-4"></div>
             </div>
@@ -126,20 +119,6 @@
         let tickerTimer = null;
         let tickerIndex = 0;
 
-        function switchCategory(cat) {
-            currentCategory = cat;
-            document.querySelectorAll('.cat-btn').forEach(b => {
-                b.classList.remove('bg-zinc-800', 'text-white');
-                b.classList.add('text-zinc-500');
-            });
-            const activeBtn = document.getElementById(`cat-${cat}`);
-            if (activeBtn) {
-                activeBtn.classList.remove('text-zinc-500');
-                activeBtn.classList.add('bg-zinc-800', 'text-white');
-            }
-            renderLiveMonitor();
-        }
-
         async function fetchData() {
             try {
                 const res = await fetch('/api/terminal');
@@ -149,7 +128,7 @@
             } catch (e) {
                 console.error("Fetch Error:", e);
                 const log = document.getElementById('log-feed');
-                if (log) log.innerHTML = `<div class="text-red-500">[錯誤] 數據管線連線中斷。</div>` + log.innerHTML;
+                if (log) log.innerHTML = `<div class="text-red-500">[ERROR] Data Pipeline Offline.</div>` + log.innerHTML;
             }
         }
 
@@ -168,218 +147,155 @@
         function setupUnifiedTicker(allItems) {
             const track = document.getElementById('track-1');
             if (!allItems || allItems.length === 0 || !track) return;
-            
             const html = allItems.map(([k, v]) => createTickerItem(k, v)).join('');
             track.innerHTML = html + html + html; 
-            
             const count = allItems.length;
             if (tickerTimer) clearInterval(tickerTimer);
-            
             tickerIndex = 0;
             track.style.transition = 'none';
             track.style.transform = `translateX(0vw)`;
             void track.offsetWidth;
+            tickerTimer = setInterval(() => {
+                tickerIndex++;
+                track.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+                track.style.transform = `translateX(-${tickerIndex * 10}vw)`;
+                if (tickerIndex >= count) {
+                    setTimeout(() => {
+                        track.style.transition = 'none';
+                        tickerIndex = 0;
+                        track.style.transform = `translateX(0vw)`;
+                    }, 800);
+                }
+            }, 3000);
+        }
 
-            if (count > 0) {
-                tickerTimer = setInterval(() => {
-                    tickerIndex++;
-                    track.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
-                    track.style.transform = `translateX(-${tickerIndex * 10}vw)`;
-
-                    if (tickerIndex >= count) {
-                        setTimeout(() => {
-                            track.style.transition = 'none';
-                            tickerIndex = 0;
-                            track.style.transform = `translateX(0vw)`;
-                        }, 800);
-                    }
-                }, 3000);
-            }
+        function switchCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(b => {
+                b.classList.remove('bg-zinc-800', 'text-white');
+                b.classList.add('text-zinc-500');
+            });
+            document.getElementById(`cat-${cat}`).className = "cat-btn text-sm px-3 py-1.5 rounded bg-zinc-800 text-white font-bold";
+            renderLiveMonitor();
         }
 
         function renderLiveMonitor() {
             if (!globalData || !globalData.indices) return;
-            const monitorContainer = document.getElementById('live-monitor-container');
-            const selector = document.getElementById('asset-selector');
-            monitorContainer.innerHTML = '';
-            
+            const container = document.getElementById('live-monitor-container');
+            container.innerHTML = '';
             let displayIndex = 0;
             Object.entries(globalData.indices).forEach(([name, v]) => {
                 if (v.category !== currentCategory) return;
-                
                 const div = document.createElement('div');
                 const bgClass = displayIndex % 2 === 0 ? 'bg-zinc-900/60' : 'bg-transparent';
-                div.className = `flex items-center justify-between py-2 px-3 ${bgClass} hover:bg-zinc-700/50 cursor-pointer transition-colors`;
-                div.onclick = () => { selector.value = name; currentAsset = name; updateMainChart(); };
+                div.className = `flex items-center justify-between py-3 px-4 ${bgClass} hover:bg-zinc-700/50 cursor-pointer transition-colors`;
+                div.onclick = () => { document.getElementById('asset-selector').value = name; currentAsset = name; updateMainChart(); };
                 div.innerHTML = `
                     <div class="flex flex-col">
-                        <span class="text-sm font-bold text-zinc-400 mb-0.5">${name}</span>
-                        <span class="text-base font-bold mono ${v.change >= 0 ? 'terminal-green' : 'text-red-500'}">${v.current.toLocaleString()}</span>
+                        <span class="text-base font-bold text-zinc-300 mb-0.5">${name}</span>
+                        <span class="text-lg font-bold mono ${v.change >= 0 ? 'terminal-green' : 'text-red-500'}">${v.current.toLocaleString()}</span>
                     </div>
-                    <div class="text-sm font-bold mono ${v.change >= 0 ? 'text-green-500' : 'text-red-500'}">${v.change >= 0 ? '+' : ''}${v.pct}%</div>
+                    <div class="text-base font-bold mono ${v.change >= 0 ? 'text-green-500' : 'text-red-500'}">${v.pct}%</div>
                 `;
-                monitorContainer.appendChild(div);
+                container.appendChild(div);
                 displayIndex++;
             });
         }
 
-        function renderUI() {
-            if (!globalData || !globalData.indices) return;
-            
-            const indices = Object.entries(globalData.indices);
-            setupUnifiedTicker(indices);
+        function loadMacroCurve(name) {
+            const macroData = globalData.reports[name];
+            if (!macroData || !macroData.series) return;
+            renderCustomChart(name, macroData.series, '#bc13fe');
+        }
 
-            // Populate asset selector once
+        function renderCustomChart(label, series, color) {
+            const ctx = document.getElementById('main-chart').getContext('2d');
+            if (mainChart) mainChart.destroy();
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: series.map(p => p.t),
+                    datasets: [{
+                        label: label,
+                        data: series.map(p => p.v),
+                        borderColor: color,
+                        borderWidth: 3,
+                        fill: true,
+                        backgroundColor: color + '15',
+                        tension: 0.3,
+                        pointRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#1a1a1a' }, ticks: { color: '#aaa', font: { weight: 'bold' } } },
+                        y: { grid: { color: '#1a1a1a' }, ticks: { color: '#aaa', font: { weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function renderUI() {
+            if (!globalData) return;
+            setupUnifiedTicker(Object.entries(globalData.indices));
+            renderLiveMonitor();
+            
             const selector = document.getElementById('asset-selector');
             if (selector.options.length === 0) {
-                indices.forEach(([name, _]) => {
+                Object.keys(globalData.indices).forEach(name => {
                     const opt = document.createElement('option');
-                    opt.value = name;
-                    opt.innerText = name;
-                    selector.appendChild(opt);
+                    opt.value = name; opt.innerText = name; selector.appendChild(opt);
                 });
-                selector.value = currentAsset;
             }
 
+            document.getElementById('corr-val').innerText = globalData.quant.liquidity_correlation;
+            document.getElementById('flow-val').innerText = `${(globalData.flows.value / 1000000).toFixed(1)}M`;
             document.getElementById('log-feed').innerHTML = globalData.logs.map(log => `<div class="mb-0.5">${log}</div>`).join('');
-
-            renderLiveMonitor();
-
-            const flow = globalData.flows;
-            document.getElementById('flow-val').innerText = `${(flow.value / 1000000).toFixed(1)} 百萬股`;
-            document.getElementById('flow-val').className = `text-xl font-bold mono ${flow.value >= 0 ? 'terminal-green' : 'text-red-500'}`;
-            document.getElementById('flow-date').innerText = `數據基準日: ${flow.date}`;
 
             const macroContainer = document.getElementById('macro-container');
             macroContainer.innerHTML = '';
             Object.entries(globalData.reports).forEach(([k, v]) => {
                 const card = document.createElement('div');
-                card.className = "p-3 border border-zinc-800 bg-zinc-900/40 rounded";
+                card.className = "p-4 border border-zinc-800 bg-zinc-900/40 rounded-lg cursor-pointer hover:border-purple-500 transition-all";
+                card.onclick = () => loadMacroCurve(k);
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-1">
-                        <span class="text-[9px] text-zinc-500 font-bold tracking-tighter">${k} 分析</span>
-                        <span class="text-[8px] mono text-blue-400 px-1 border border-blue-500/20 rounded">${v.period}</span>
+                        <span class="text-sm text-zinc-300 font-bold">${k}</span>
+                        <span class="text-[10px] mono text-purple-400 px-1 border border-purple-500/20 rounded">${v.period}</span>
                     </div>
-                    <div class="flex justify-between items-end mt-2">
-                        <div class="text-lg font-bold mono">${v.value}%</div>
-                        <div class="text-[8px] text-zinc-500 uppercase">趨勢: ${v.trend}</div>
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-zinc-900 flex justify-between text-[7px] text-zinc-700 font-bold uppercase tracking-widest">
-                        <span>預計下次公佈:</span>
-                        <span>${v.next}</span>
-                    </div>
+                    <div class="text-2xl font-bold mono text-white mt-2">${v.value}${v.unit}</div>
+                    <div class="text-xs text-zinc-500 mt-1 font-bold">點擊載入歷史曲線 ➔</div>
                 `;
                 macroContainer.appendChild(card);
             });
 
-            document.getElementById('last-update').innerText = `同步時間: ${globalData.timestamp}`;
             updateMainChart();
         }
 
         function updateMainChart() {
             if (!globalData || !globalData.indices[currentAsset]) return;
             const assetData = globalData.indices[currentAsset];
-            const series = assetData.series[currentTimeframe];
-            
-            const labels = series.map(p => p.t);
-            const values = series.map(p => p.v);
-            
-            const ctx = document.getElementById('main-chart').getContext('2d');
-            if (mainChart) mainChart.destroy();
-            
-            mainChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: `${currentAsset}`,
-                        data: values,
-                        borderColor: '#00d2ff',
-                        borderWidth: 2,
-                        fill: true,
-                        backgroundColor: (context) => {
-                            const chart = context.chart;
-                            const {ctx, chartArea} = chart;
-                            if (!chartArea) return null;
-                            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                            gradient.addColorStop(0, 'rgba(0, 210, 255, 0)');
-                            gradient.addColorStop(1, 'rgba(0, 210, 255, 0.2)');
-                            return gradient;
-                        },
-                        tension: 0.2,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: '#00d2ff',
-                        pointBorderColor: '#050505',
-                        pointBorderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 400 },
-                    interaction: {
-                        intersect: false,
-                        mode: 'index',
-                    },
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(5, 5, 5, 0.9)',
-                            titleFont: { family: 'JetBrains Mono', size: 12 },
-                            bodyFont: { family: 'JetBrains Mono', size: 14 },
-                            borderColor: '#333',
-                            borderWidth: 1,
-                            padding: 10,
-                            displayColors: false,
-                            callbacks: {
-                                label: (ctx) => ` 價格: ${ctx.parsed.y.toLocaleString()}`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { 
-                            grid: { display: true, color: '#1a1a1a' },
-                            ticks: { 
-                                color: '#aaa', 
-                                font: { family: 'JetBrains Mono', size: 11, weight: 'bold' },
-                                maxRotation: 0,
-                                autoSkip: true,
-                                maxTicksLimit: 7
-                            }
-                        },
-                        y: { 
-                            grid: { color: '#1a1a1a' },
-                            ticks: { 
-                                color: '#aaa', 
-                                font: { family: 'JetBrains Mono', size: 11, weight: 'bold' }
-                            }
-                        }
-                    }
-                }
-            });
+            renderCustomChart(currentAsset, assetData.series[currentTimeframe], '#00d2ff');
         }
 
         function switchTimeframe(tf) {
             currentTimeframe = tf;
-            document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('tab-active'));
-            document.getElementById(`btn-${tf}`).classList.add('tab-active');
+            document.querySelectorAll('.tf-btn').forEach(b => {
+                b.classList.remove('tab-active', 'text-white');
+                b.classList.add('text-zinc-500');
+            });
+            document.getElementById(`btn-${tf}`).className = "tf-btn tab-active text-base font-bold pb-1 text-white";
             updateMainChart();
         }
 
-        document.getElementById('asset-selector').onchange = (e) => {
-            currentAsset = e.target.value;
-            updateMainChart();
-        };
-
-        let refreshSecs = 15;
+        document.getElementById('asset-selector').onchange = (e) => { currentAsset = e.target.value; updateMainChart(); };
         setInterval(() => {
-            refreshSecs--;
-            if (refreshSecs <= 0) {
-                fetchData();
-                refreshSecs = 15;
-            }
-            document.getElementById('refresh-timer').innerText = `${refreshSecs}s`;
+            let timer = document.getElementById('refresh-timer');
+            let secs = parseInt(timer.innerText) - 1;
+            if (secs <= 0) { fetchData(); secs = 15; }
+            timer.innerText = secs + 's';
         }, 1000);
 
         fetchData();
