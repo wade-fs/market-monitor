@@ -281,18 +281,21 @@
             const assetData = globalData.indices[currentAsset];
             const series = assetData.series[currentTimeframe];
             
+            const labels = series.map(p => p.t);
+            const values = series.map(p => p.v);
+            
             const ctx = document.getElementById('main-chart').getContext('2d');
             if (mainChart) mainChart.destroy();
             
             mainChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: series.map((_, i) => i),
+                    labels: labels,
                     datasets: [{
                         label: `${currentAsset}`,
-                        data: series,
+                        data: values,
                         borderColor: '#00d2ff',
-                        borderWidth: 1.5,
+                        borderWidth: 2,
                         fill: true,
                         backgroundColor: (context) => {
                             const chart = context.chart;
@@ -300,24 +303,57 @@
                             if (!chartArea) return null;
                             const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
                             gradient.addColorStop(0, 'rgba(0, 210, 255, 0)');
-                            gradient.addColorStop(1, 'rgba(0, 210, 255, 0.15)');
+                            gradient.addColorStop(1, 'rgba(0, 210, 255, 0.2)');
                             return gradient;
                         },
                         tension: 0.2,
-                        pointRadius: 1,
-                        pointBackgroundColor: '#00d2ff'
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#00d2ff',
+                        pointBorderColor: '#050505',
+                        pointBorderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     animation: { duration: 400 },
-                    plugins: { legend: { display: false } },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(5, 5, 5, 0.9)',
+                            titleFont: { family: 'JetBrains Mono', size: 12 },
+                            bodyFont: { family: 'JetBrains Mono', size: 14 },
+                            borderColor: '#333',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: (ctx) => ` 價格: ${ctx.parsed.y.toLocaleString()}`
+                            }
+                        }
+                    },
                     scales: {
-                        x: { display: false },
+                        x: { 
+                            grid: { display: true, color: '#1a1a1a' },
+                            ticks: { 
+                                color: '#aaa', 
+                                font: { family: 'JetBrains Mono', size: 11, weight: 'bold' },
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 7
+                            }
+                        },
                         y: { 
                             grid: { color: '#1a1a1a' },
-                            ticks: { color: '#444', font: { family: 'JetBrains Mono', size: 9 } }
+                            ticks: { 
+                                color: '#aaa', 
+                                font: { family: 'JetBrains Mono', size: 11, weight: 'bold' }
+                            }
                         }
                     }
                 }

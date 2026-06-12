@@ -68,11 +68,16 @@ class MarketDataOrchestrator:
             
             close = df['Close'].ffill()
             
-            # Timeframe series
-            daily = self.clean_series(close.tail(30).tolist())
-            weekly = self.clean_series(close.resample('W').last().tail(20).tolist())
-            monthly = self.clean_series(close.resample('ME').last().tail(12).tolist())
-            quarterly = self.clean_series(close.resample('QE').last().tail(8).tolist())
+            def format_series(data):
+                # Returns list of {t: timestamp, v: value}
+                return [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 2) if np.isfinite(v) else None} 
+                        for t, v in data.items()]
+
+            # Timeframe series with dates
+            daily = format_series(close.tail(30))
+            weekly = format_series(close.resample('W').last().tail(20))
+            monthly = format_series(close.resample('ME').last().tail(12))
+            quarterly = format_series(close.resample('QE').last().tail(8))
             
             current = round(float(close.iloc[-1]), 2)
             if not np.isfinite(current): current = 0
