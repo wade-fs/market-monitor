@@ -82,8 +82,40 @@ class MarketDataOrchestrator:
             change = round(current - prev, 2)
             pct = round((change / prev) * 100, 2) if prev != 0 else 0
             
+            # --- 量化診斷邏輯 (基於 TODO.md) ---
+            last_row = df.iloc[-1]
+            prev_row = df.iloc[-2] if len(df) > 1 else last_row
+            rsi = last_row['RSI']
+            macd = last_row['MACD']
+            signal = last_row['MACD_S']
+            p_macd = prev_row['MACD']
+            p_signal = prev_row['MACD_S']
+            
+            advice = "⚖️ 趨勢中性"
+            advice_color = "text-zinc-400"
+            
+            if rsi > 70:
+                advice = "⚠️ 超買警告 (RSI > 70)"
+                advice_color = "text-red-400"
+            elif rsi < 30:
+                advice = "✅ 超賣反彈 (RSI < 30)"
+                advice_color = "text-green-400"
+            elif macd > signal and p_macd <= p_signal:
+                advice = "📈 MACD 黃金交叉 (買入信號)"
+                advice_color = "terminal-green"
+            elif macd < signal and p_macd >= p_signal:
+                advice = "📉 MACD 死亡交叉 (賣出信號)"
+                advice_color = "text-red-500"
+            elif rsi > 50 and macd > signal:
+                advice = "🚀 多頭波段持續中"
+                advice_color = "terminal-blue"
+            elif rsi < 50 and macd < signal:
+                advice = "🌑 空頭趨勢轉強"
+                advice_color = "text-orange-500"
+
             return {
-                "name": name, "category": category, "current": current, "change": change, "pct": pct, "is_macro": False,
+                "name": name, "category": category, "current": current, "change": change, "pct": pct, 
+                "is_macro": False, "advice": advice, "advice_color": advice_color,
                 "series": {
                     "daily": format_series(df.tail(30)),
                     "weekly": format_series(df.resample('W').last().tail(20)),
@@ -222,16 +254,36 @@ def get_correlation():
     return df_corr.to_dict()
 
 @app.get("/api/institutional")
-def get_institutional(stock_id: str = "2330", days: int = 20):
+def get_institutional(name: str = "台股加權", symbol: str = "^TWII", days: int = 20):
     try:
-        start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-        df = dl.taiwan_stock_institutional_investors(stock_id=stock_id, start_date=start_date)
-        if df.empty: return {}
-        result = {}
-        for itype, label in [('Foreign_Investor', '外資'), ('Investment_Trust', '投信'), ('Dealer', '自營商')]:
-            subset = df[df['name'] == itype]
-            result[label] = [{"t": row['date'], "v": int(row['buy'] - row['sell'])} for _, row in subset.iterrows()]
-        return result
+        # 情況 A: 台股市場相關 (使用 FinMind 真實籌碼)
+        if "台股" in name:
+            start_date = (datetime.now() - timedelta(days=days+10)).strftime('%Y-%m-%d')
+            # 獲取全市場三大法人買賣超
+            df = dl.taiwan_stock_total_institutional_investors(start_date=start_date)
+            if df.empty: return {}
+            result = {}
+            for itype, label in [('Foreign_Investor', '外資'), ('Investment_Trust', '投信'), ('Dealer', '自營商')]:
+                subset = df[df['name'] == itype].tail(days)
+                result[label] = [{"t": row['date'], "v": int(row['buy'] - row['sell'])} for _, row in subset.iterrows()]
+            return {"type": "institutional", "data": result}
+        
+        # 情況 B: 全球資產 (計算量價資金流 Money Flow)
+        else:
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period=f"{days+5}d")
+            if df.empty: return {}
+            
+            # 計算資金流 = (收盤 - 開盤) / (最高 - 最低) * 成交量
+            # 簡化算法：漲跌幅 * 成交量 (取數值級距)
+            df['net_flow'] = (df['Close'] - df['Open']) / (df['High'] - df['Low']).replace(0, 1) * df['Volume']
+            df = df.tail(days)
+            
+            flow_data = [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 0)} for t, v in df['net_flow'].items()]
+            return {
+                "type": "money_flow", 
+                "data": {"資金淨流": flow_data}
+            }
     except Exception: return {}
 
 os.makedirs("static", exist_ok=True)

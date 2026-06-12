@@ -66,7 +66,7 @@
             </div>
             <div class="p-4 panel h-40 flex flex-col justify-center bg-zinc-900/10">
                 <h2 class="text-xs font-bold text-zinc-500 uppercase mb-2 flex justify-between">
-                    <span>三大法人籌碼 (2330)</span>
+                    <span id="flow-title">資金/籌碼流向</span>
                     <span id="flow-date" class="text-[9px] text-zinc-600">--</span>
                 </h2>
                 <div class="flex-1">
@@ -82,13 +82,14 @@
                     <div class="flex items-center gap-6">
                         <select id="asset-selector" class="bg-zinc-800 text-white text-lg font-bold py-1.5 px-4 rounded border border-zinc-700 focus:outline-none min-w-[200px]">
                         </select>
+                        <div id="quant-advice" class="text-sm font-bold mono px-3 py-1 bg-zinc-800/50 rounded border border-zinc-700 hidden"></div>
                         <div class="flex bg-zinc-900 rounded p-1">
                             <button onclick="switchView('chart')" class="subtab-btn subtab-active text-xs px-4 py-1 rounded font-bold" id="tab-chart">技術圖表</button>
                             <button onclick="switchView('corr')" class="subtab-btn text-xs px-4 py-1 rounded text-zinc-500 font-bold" id="tab-corr">相關性矩陣</button>
                         </div>
                     </div>
                     <div class="flex gap-4 mono" id="timeframe-group">
-                        <button onclick="switchTimeframe('daily')" class="tf-btn tab-active text-base font-bold pb-1" id="btn-daily">日線</button>
+                        <button onclick="switchTimeframe('daily')" class="tf-btn tab-active text-base font-bold pb-1 text-white" id="btn-daily">日線</button>
                         <button onclick="switchTimeframe('weekly')" class="tf-btn text-base font-bold pb-1 text-zinc-500" id="btn-weekly">週線</button>
                         <button onclick="switchTimeframe('monthly')" class="tf-btn text-base font-bold pb-1 text-zinc-500" id="btn-monthly">月線</button>
                     </div>
@@ -135,6 +136,12 @@
         let globalData = null, mainChart = null, rsiChart = null, macdChart = null, flowChart = null;
         let tickerTimer = null, tickerIndex = 0;
 
+        const SYMBOLS = {
+            "股市": { "台股加權": "^TWII", "納斯達克": "^IXIC", "標普500": "^GSPC", "日經225": "^N225", "德國DAX": "^GDAXI", "印度NIFTY": "^NSEI", "澳洲ASX": "^AXJO", "新加坡STI": "^STI" },
+            "期匯": { "美元指數": "DX-Y.NYB", "美債10Y": "^TNX", "台幣匯率": "TWD=X" },
+            "數字貨幣": { "比特幣": "BTC-USD", "以太幣": "ETH-USD" }
+        };
+
         async function fetchData() {
             try {
                 const res = await fetch('/api/terminal');
@@ -143,15 +150,18 @@
                 globalData = data;
                 if (isFirst) renderInitialUI();
                 else updateUI();
-                fetchInstitutional();
             } catch (e) { console.error(e); }
         }
 
         async function fetchInstitutional() {
             try {
-                const res = await fetch('/api/institutional?stock_id=2330');
-                const data = await res.json();
-                renderFlowChart(data);
+                const asset = globalData.indices[currentAsset];
+                if (!asset || asset.is_macro) return;
+                const titleEl = document.getElementById('flow-title');
+                titleEl.innerText = `${currentAsset} 資金流向`;
+                const res = await fetch(`/api/institutional?name=${currentAsset}&symbol=${SYMBOLS[currentCategory]?.[currentAsset] || ''}`);
+                const result = await res.json();
+                renderFlowChart(result);
             } catch (e) {}
         }
 
@@ -165,16 +175,11 @@
 
         function switchView(view) {
             currentView = view;
-            document.querySelectorAll('.subtab-btn').forEach(b => {
-                b.classList.remove('subtab-active');
-                b.classList.add('text-zinc-500');
-            });
+            document.querySelectorAll('.subtab-btn').forEach(b => { b.classList.remove('subtab-active'); b.classList.add('text-zinc-500'); });
             document.getElementById(`tab-${view}`).classList.add('subtab-active');
             document.getElementById(`tab-${view}`).classList.remove('text-zinc-500');
-            
             document.getElementById('chart-view').classList.toggle('hidden', view !== 'chart');
             document.getElementById('corr-view').classList.toggle('hidden', view !== 'corr');
-            
             if (view === 'corr') fetchCorrelation();
             else updateMainChart(true);
         }
@@ -183,7 +188,6 @@
             const container = document.getElementById('corr-matrix');
             const keys = Object.keys(data);
             let html = '<div class="flex"><div class="corr-cell border-none"></div>' + keys.map(k => `<div class="corr-cell text-zinc-400 font-bold">${k}</div>`).join('') + '</div>';
-            
             keys.forEach(rowKey => {
                 html += `<div class="flex"><div class="corr-cell text-zinc-400 font-bold">${rowKey}</div>`;
                 keys.forEach(colKey => {
@@ -197,25 +201,20 @@
             container.innerHTML = html;
         }
 
-        function renderFlowChart(data) {
+        function renderFlowChart(res) {
             const ctx = document.getElementById('flow-chart').getContext('2d');
             if (flowChart) flowChart.destroy();
-            const labels = data['外資'].map(p => p.t.slice(5));
+            const data = res.data;
+            if (!data) return;
+            const labels = Object.values(data)[0].map(p => p.t.slice(5));
+            const datasets = [];
+            const colors = {'外資': '#00ff41', '投信': '#00d2ff', '自營商': '#bc13fe', '資金淨流': '#00d2ff'};
+            Object.entries(data).forEach(([label, series]) => {
+                datasets.push({ label, data: series.map(p => p.v), backgroundColor: colors[label] || '#555', borderRadius: 2 });
+            });
             flowChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        { label: '外資', data: data['外資'].map(p => p.v / 1000000), backgroundColor: '#00ff41' },
-                        { label: '投信', data: data['投信'].map(p => p.v / 1000000), backgroundColor: '#00d2ff' },
-                        { label: '自營', data: data['自營商'].map(p => p.v / 1000000), backgroundColor: '#bc13fe' }
-                    ]
-                },
-                options: { 
-                    responsive: true, maintainAspectRatio: false,
-                    scales: { x: { display: false }, y: { display: false } },
-                    plugins: { legend: { display: false } }
-                }
+                type: 'bar', data: { labels, datasets },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
             });
         }
 
@@ -231,8 +230,16 @@
         function updateUI() {
             document.getElementById('corr-val').innerText = globalData.quant.liquidity_correlation;
             document.getElementById('log-feed').innerHTML = globalData.logs.map(log => `<div class="mb-0.5">${log}</div>`).join('');
+            const assetData = globalData.indices[currentAsset];
+            const adviceEl = document.getElementById('quant-advice');
+            if (assetData && assetData.advice && !assetData.is_macro) {
+                adviceEl.innerText = assetData.advice;
+                adviceEl.className = `text-sm font-bold mono px-3 py-1 bg-zinc-800/50 rounded border border-zinc-700 ${assetData.advice_color || 'text-zinc-500'}`;
+                adviceEl.classList.remove('hidden');
+            } else { adviceEl.classList.add('hidden'); }
             renderLiveMonitor();
             updateMainChart(false);
+            fetchInstitutional();
         }
 
         function setupTicker(allItems) {
@@ -245,7 +252,7 @@
             tickerTimer = setInterval(() => {
                 tickerIndex++;
                 track.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
-                track.style.transform = `translateX(-${tickerIndex * 10}vw)`;
+                track.style.transform = `translateX(-${tickerIndex * 12}vw)`;
                 if (tickerIndex >= items.length) { setTimeout(() => { track.style.transition = 'none'; tickerIndex = 0; track.style.transform = 'translateX(0vw)'; }, 800); }
             }, 4000);
         }
@@ -279,8 +286,6 @@
             if (!data) return;
             const series = data.series[currentTimeframe] || data.series['daily'];
             const color = data.is_macro ? '#bc13fe' : '#00d2ff';
-            
-            // Render Price Chart
             const ctx = document.getElementById('main-chart').getContext('2d');
             if (mainChart) mainChart.destroy();
             mainChart = new Chart(ctx, {
@@ -288,8 +293,6 @@
                 data: { labels: series.map(p => p.t), datasets: [{ label: currentAsset, data: series.map(p => p.v), borderColor: color, borderWidth: 3, fill: true, backgroundColor: color + '15', tension: 0.3, pointRadius: 4 }] },
                 options: { responsive: true, maintainAspectRatio: false, animation: { duration: withAnim ? 400 : 0 }, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#1a1a1a' }, ticks: { color: '#aaa', font: { weight: 'bold' } } } } }
             });
-
-            // RSI Chart
             const rsiCtx = document.getElementById('rsi-chart').getContext('2d');
             if (rsiChart) rsiChart.destroy();
             rsiChart = new Chart(rsiCtx, {
@@ -297,8 +300,6 @@
                 data: { labels: series.map(p => p.t), datasets: [{ data: series.map(p => p.rsi), borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { min: 20, max: 80, grid: { color: '#222' }, ticks: { size: 8, color: '#666' } } } }
             });
-
-            // MACD Chart
             const macdCtx = document.getElementById('macd-chart').getContext('2d');
             if (macdChart) macdChart.destroy();
             macdChart = new Chart(macdCtx, {
