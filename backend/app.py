@@ -19,20 +19,27 @@ app.add_middleware(
 
 dl = DataLoader()
 
-# Expanded Global Symbols with Traditional Chinese Names
+# Expanded Global Symbols with Categories
 SYMBOLS = {
-    "台股加權": "^TWII",
-    "納斯達克": "^IXIC",      # Nasdaq (US)
-    "標普500": "^GSPC",      # S&P 500 (US)
-    "日經225": "^N225",     # Nikkei 225 (JP)
-    "德國DAX": "^GDAXI",     # DAX (EU/DE)
-    "印度NIFTY": "^NSEI",    # Nifty 50 (IN)
-    "澳洲ASX": "^AXJO",     # ASX 200 (AU)
-    "新加坡STI": "^STI",       # Straits Times (SG)
-    "比特幣": "BTC-USD",
-    "美元指數": "DX-Y.NYB",
-    "美債10Y": "^TNX",
-    "台幣匯率": "TWD=X"
+    "股市": {
+        "台股加權": "^TWII",
+        "納斯達克": "^IXIC",
+        "標普500": "^GSPC",
+        "日經225": "^N225",
+        "德國DAX": "^GDAXI",
+        "印度NIFTY": "^NSEI",
+        "澳洲ASX": "^AXJO",
+        "新加坡STI": "^STI"
+    },
+    "期匯": {
+        "美元指數": "DX-Y.NYB",
+        "美債10Y": "^TNX",
+        "台幣匯率": "TWD=X"
+    },
+    "數字貨幣": {
+        "比特幣": "BTC-USD",
+        "以太幣": "ETH-USD"
+    }
 }
 
 class MarketDataOrchestrator:
@@ -48,7 +55,7 @@ class MarketDataOrchestrator:
         """Replace NaN/Inf with None for JSON compliance."""
         return [float(x) if np.isfinite(x) else None for x in series]
 
-    def fetch_timeframe_data(self, name, symbol, period="2y"):
+    def fetch_timeframe_data(self, name, symbol, category, period="2y"):
         try:
             self.add_log(f"正在同步 {name} ({symbol})...")
             ticker = yf.Ticker(symbol)
@@ -79,6 +86,7 @@ class MarketDataOrchestrator:
             self.add_log(f"成功更新: {name}")
             return {
                 "name": name,
+                "category": category,
                 "current": current,
                 "change": change,
                 "pct": pct,
@@ -113,10 +121,11 @@ def get_terminal_data():
     orchestrator.add_log("啟動全球大數據管線同步...")
     
     main_indices = {}
-    for name, sym in SYMBOLS.items():
-        data = orchestrator.fetch_timeframe_data(name, sym)
-        if data:
-            main_indices[name] = data
+    for cat, assets in SYMBOLS.items():
+        for name, sym in assets.items():
+            data = orchestrator.fetch_timeframe_data(name, sym, cat)
+            if data:
+                main_indices[name] = data
     
     reports = {
         "CPI 通膨": {"value": 3.1, "period": "月報", "trend": "持平", "next": "2026-07-12"},
