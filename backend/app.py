@@ -214,6 +214,8 @@ orchestrator = MarketDataOrchestrator()
 
 class MacroDashboardOrchestrator:
     def __init__(self):
+        self.cache = {} # {country: {"data": results, "time": datetime}}
+        self.cache_duration = timedelta(hours=24)
         self.country_map = {
             "美國": {
                 "Growth": {"GDP YoY": "A191RL1Q225SBEA", "PMI": "ISM/MAN_PMI"}, 
@@ -242,6 +244,12 @@ class MacroDashboardOrchestrator:
         }
 
     def fetch_country_data(self, country):
+        # 1. 檢查緩存
+        if country in self.cache:
+            entry = self.cache[country]
+            if datetime.now() - entry["time"] < self.cache_duration:
+                return entry["data"]
+
         config = self.country_map.get(country, self.country_map["美國"])
         results = {}
         for category, indicators in config.items():
@@ -273,6 +281,11 @@ class MacroDashboardOrchestrator:
                                 "series": series[-20:]
                             })
                 except Exception: pass
+        
+        # 2. 更新緩存
+        if results:
+            self.cache[country] = {"data": results, "time": datetime.now()}
+            
         return results
 
 macro_dash = MacroDashboardOrchestrator()
