@@ -214,7 +214,7 @@ def get_correlation():
             if not df.empty: closes[name] = df['Close']
         except Exception: pass
     if not closes: return {}
-    df_corr = pd.DataFrame(closes).dropna().corr().round(2)
+    df_corr = pd.DataFrame(closes).dropna().corr().round(2).fillna(0)
     return df_corr.to_dict()
 
 @app.get("/api/institutional")
