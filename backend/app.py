@@ -256,35 +256,35 @@ def get_correlation():
 @app.get("/api/institutional")
 def get_institutional(name: str = "台股加權", symbol: str = "^TWII", days: int = 20):
     try:
-        # 情況 A: 台股市場相關 (使用 FinMind 真實籌碼)
+        # 情況 A: 台股市場相關 (嘗試使用 FinMind 真實籌碼)
         if "台股" in name:
-            start_date = (datetime.now() - timedelta(days=days+10)).strftime('%Y-%m-%d')
-            # 獲取全市場三大法人買賣超
-            df = dl.taiwan_stock_total_institutional_investors(start_date=start_date)
-            if df.empty: return {}
-            result = {}
-            for itype, label in [('Foreign_Investor', '外資'), ('Investment_Trust', '投信'), ('Dealer', '自營商')]:
-                subset = df[df['name'] == itype].tail(days)
-                result[label] = [{"t": row['date'], "v": int(row['buy'] - row['sell'])} for _, row in subset.iterrows()]
-            return {"type": "institutional", "data": result}
+            try:
+                start_date = (datetime.now() - timedelta(days=days+15)).strftime('%Y-%m-%d')
+                df = dl.taiwan_stock_total_institutional_investors(start_date=start_date)
+                if not df.empty:
+                    result = {}
+                    for itype, label in [('Foreign_Investor', '外資'), ('Investment_Trust', '投信'), ('Dealer', '自營商')]:
+                        subset = df[df['name'] == itype].tail(days)
+                        if not subset.empty:
+                            result[label] = [{"t": row['date'], "v": int(row['buy'] - row['sell'])} for _, row in subset.iterrows()]
+                    if result:
+                        return {"type": "institutional", "data": result}
+            except Exception: pass
         
-        # 情況 B: 全球資產 (計算量價資金流 Money Flow)
-        else:
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period=f"{days+5}d")
-            if df.empty: return {}
-            
+        # 情況 B: 全球資產 或 台股籌碼獲取失敗 (計算量價資金流 Money Flow)
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=f"{days+10}d")
+        if not df.empty:
             # 計算資金流 = (收盤 - 開盤) / (最高 - 最低) * 成交量
-            # 簡化算法：漲跌幅 * 成交量 (取數值級距)
             df['net_flow'] = (df['Close'] - df['Open']) / (df['High'] - df['Low']).replace(0, 1) * df['Volume']
             df = df.tail(days)
-            
             flow_data = [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 0)} for t, v in df['net_flow'].items()]
             return {
                 "type": "money_flow", 
                 "data": {"資金淨流": flow_data}
             }
-    except Exception: return {}
+        return {"type": "empty", "data": {}}
+    except Exception: return {"type": "empty", "data": {}}
 
 os.makedirs("static", exist_ok=True)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
