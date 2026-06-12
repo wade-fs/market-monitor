@@ -7,4 +7,3 @@ numpy<2.0.0
 requests
 tqdm
 pandas_datareader
-scipy

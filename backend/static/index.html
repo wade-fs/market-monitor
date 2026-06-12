@@ -20,284 +20,303 @@
         .ticker-container { background: #000; border-bottom: 1px solid #333; height: 40px; overflow: hidden; display: flex; align-items: center; width: 100%; position: relative; }
         .ticker-track { display: flex; align-items: center; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); height: 100%; }
         .ticker-item { width: 10vw; flex-shrink: 0; padding: 0 10px; font-size: 11px; white-space: nowrap; overflow: hidden; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid #222; }
-        .ticker-item .val-row { display: flex; justify-content: space-between; align-items: center; }
 
         .tab-active { border-bottom: 3px solid var(--neon-blue); color: var(--neon-blue); }
+        .subtab-active { background: #222; color: var(--neon-blue); border: 1px solid #444; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #333; }
+        
+        .corr-cell { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border: 1px solid #111; }
     </style>
 </head>
 <body class="h-screen flex flex-col">
-    <!-- Single-Row Horizontal Step Ticker -->
     <div class="ticker-container">
         <div class="ticker-track" id="track-1">
-            <div class="ticker-item mono text-zinc-500 italic" style="width:100vw">正在初始化全球量化數據管線...</div>
+            <div class="ticker-item mono text-zinc-500 italic" style="width:100vw">大數據管線初始化中...</div>
         </div>
     </div>
 
-    <!-- Header -->
     <header class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/20">
         <div class="flex items-center gap-4">
-            <h1 class="text-2xl font-bold tracking-tighter terminal-purple flex items-center gap-2">
-                <i data-lucide="zap" class="w-8 h-8"></i> 量化宏觀終端 <span class="text-xs terminal-blue mono">HENREN STYLE v3.0</span>
+            <h1 class="text-2xl font-bold tracking-tighter terminal-blue flex items-center gap-2">
+                <i data-lucide="zap" class="w-8 h-8"></i> 量化宏觀終端 <span class="text-xs terminal-purple mono">v3.5 QUANT</span>
             </h1>
-            <div class="px-3 py-1 border border-green-500/30 text-xs terminal-green bg-green-500/5 mono rounded">LIQUIDITY: MONITORING</div>
+            <div class="px-3 py-1 border border-green-500/30 text-xs terminal-green bg-green-500/5 mono rounded">QUANT ENGINE: READY</div>
         </div>
         <div class="flex items-center gap-6 mono text-sm text-zinc-500">
-            <div>流動性相關性: <span id="corr-val" class="terminal-blue">--</span></div>
-            <div>NEXT SYNC: <span id="refresh-timer" class="text-zinc-300">15s</span></div>
+            <div>流動性相關性: <span id="corr-val" class="terminal-purple">--</span></div>
+            <div>NEXT SYNC: <span id="refresh-timer" class="text-zinc-300">60s</span></div>
         </div>
     </header>
 
     <main class="flex-1 grid grid-cols-12 gap-2 p-2 overflow-hidden">
-        <!-- Left Pane -->
+        <!-- Left Pane: Assets -->
         <div class="col-span-12 lg:col-span-3 flex flex-col gap-2 h-full overflow-hidden">
             <div class="p-3 panel flex-1 overflow-y-auto flex flex-col">
                 <h2 class="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <i data-lucide="activity" class="w-5 h-5"></i> 市場實時資產
+                    <i data-lucide="database" class="w-5 h-5"></i> 全球全維度監控
                 </h2>
-                <div class="flex gap-2 mb-3 border-b border-zinc-800 pb-3">
-                    <button onclick="switchCategory('股市')" class="cat-btn text-sm px-3 py-1.5 rounded bg-zinc-800 text-white font-bold" id="cat-股市">股市</button>
-                    <button onclick="switchCategory('期匯')" class="cat-btn text-sm px-3 py-1.5 rounded text-zinc-500 hover:text-white font-bold" id="cat-期匯">期匯</button>
-                    <button onclick="switchCategory('數字貨幣')" class="cat-btn text-sm px-3 py-1.5 rounded text-zinc-500 hover:text-white font-bold" id="cat-數字貨幣">數字貨幣</button>
+                <div class="flex gap-2 mb-3 border-b border-zinc-800 pb-3 overflow-x-auto">
+                    <button onclick="switchCategory('股市')" class="cat-btn text-xs px-2 py-1 rounded bg-zinc-800 text-white font-bold" id="cat-股市">股市</button>
+                    <button onclick="switchCategory('期匯')" class="cat-btn text-xs px-2 py-1 rounded text-zinc-500 hover:text-white font-bold" id="cat-期匯">期匯</button>
+                    <button onclick="switchCategory('數字貨幣')" class="cat-btn text-xs px-2 py-1 rounded text-zinc-500 hover:text-white font-bold" id="cat-數字貨幣">數字貨幣</button>
+                    <button onclick="switchCategory('宏觀')" class="cat-btn text-xs px-2 py-1 rounded text-zinc-500 hover:text-purple-400 font-bold" id="cat-宏觀">宏觀</button>
                 </div>
                 <div id="live-monitor-container" class="flex-1 flex flex-col border border-zinc-800/50 rounded overflow-y-auto"></div>
             </div>
-            <div class="p-4 panel h-36 flex flex-col justify-center bg-zinc-900/10">
-                <h2 class="text-xs font-bold text-zinc-500 uppercase mb-2">量化籌碼 (2330)</h2>
-                <div class="flex justify-between items-end">
-                    <div class="text-3xl font-bold mono" id="flow-val">--</div>
-                    <div class="text-xs text-zinc-600" id="flow-date">--</div>
+            <div class="p-4 panel h-40 flex flex-col justify-center bg-zinc-900/10">
+                <h2 class="text-xs font-bold text-zinc-500 uppercase mb-2 flex justify-between">
+                    <span>三大法人籌碼 (2330)</span>
+                    <span id="flow-date" class="text-[9px] text-zinc-600">--</span>
+                </h2>
+                <div class="flex-1">
+                    <canvas id="flow-chart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Center Pane -->
-        <div class="col-span-12 lg:col-span-6 flex flex-col gap-2 h-full overflow-hidden">
+        <!-- Center Pane: Analysis -->
+        <div class="col-span-12 lg:col-span-9 flex flex-col gap-2 h-full overflow-hidden">
             <div class="panel flex-1 flex flex-col overflow-hidden">
                 <div class="p-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-                    <div class="flex items-center gap-4">
-                        <select id="asset-selector" class="bg-zinc-800 text-white text-lg font-bold py-2 px-4 rounded border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer appearance-none">
+                    <div class="flex items-center gap-6">
+                        <select id="asset-selector" class="bg-zinc-800 text-white text-lg font-bold py-1.5 px-4 rounded border border-zinc-700 focus:outline-none min-w-[200px]">
                         </select>
+                        <div class="flex bg-zinc-900 rounded p-1">
+                            <button onclick="switchView('chart')" class="subtab-btn subtab-active text-xs px-4 py-1 rounded font-bold" id="tab-chart">技術圖表</button>
+                            <button onclick="switchView('corr')" class="subtab-btn text-xs px-4 py-1 rounded text-zinc-500 font-bold" id="tab-corr">相關性矩陣</button>
+                        </div>
                     </div>
-                    <div class="flex gap-4 mono">
+                    <div class="flex gap-4 mono" id="timeframe-group">
                         <button onclick="switchTimeframe('daily')" class="tf-btn tab-active text-base font-bold pb-1" id="btn-daily">日線</button>
                         <button onclick="switchTimeframe('weekly')" class="tf-btn text-base font-bold pb-1 text-zinc-500" id="btn-weekly">週線</button>
                         <button onclick="switchTimeframe('monthly')" class="tf-btn text-base font-bold pb-1 text-zinc-500" id="btn-monthly">月線</button>
                     </div>
                 </div>
-                <div class="flex-1 p-6 relative overflow-hidden">
-                    <canvas id="main-chart"></canvas>
+                
+                <div class="flex-1 p-4 relative overflow-hidden flex flex-col gap-2">
+                    <div id="chart-view" class="flex-1 flex flex-col gap-2 h-full">
+                        <div class="flex-[2] relative">
+                            <canvas id="main-chart"></canvas>
+                        </div>
+                        <div class="flex-1 grid grid-cols-2 gap-2">
+                            <div class="panel bg-black/40 p-2 relative">
+                                <h3 class="text-[10px] font-bold text-zinc-500 absolute top-2 left-2 uppercase">RSI (14)</h3>
+                                <canvas id="rsi-chart"></canvas>
+                            </div>
+                            <div class="panel bg-black/40 p-2 relative">
+                                <h3 class="text-[10px] font-bold text-zinc-500 absolute top-2 left-2 uppercase">MACD</h3>
+                                <canvas id="macd-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="corr-view" class="hidden flex-1 flex flex-col items-center justify-center bg-zinc-950 p-8">
+                        <h2 class="text-xl font-bold mb-8 terminal-blue uppercase tracking-widest italic">跨市場資產相關性矩陣 (180D)</h2>
+                        <div id="corr-matrix" class="flex flex-col border border-zinc-800 p-4 rounded bg-zinc-900/20">
+                            <!-- Matrix populated by JS -->
+                        </div>
+                    </div>
                 </div>
             </div>
+            
             <div class="h-32 panel p-3 bg-black flex flex-col overflow-hidden">
                 <div class="text-xs text-zinc-600 uppercase mb-1 flex items-center gap-1 font-bold">
-                    <i data-lucide="list" class="w-4 h-4"></i> Data Engineering Console
+                    <i data-lucide="list" class="w-4 h-4"></i> 量化日誌 (QUANT ENGINE LOG)
                 </div>
                 <div id="log-feed" class="flex-1 mono text-xs text-zinc-500 overflow-y-auto"></div>
-            </div>
-        </div>
-
-        <!-- Right Pane -->
-        <div class="col-span-12 lg:col-span-3 flex flex-col gap-2 h-full overflow-hidden">
-            <div class="p-3 panel flex-1 overflow-y-auto">
-                <h2 class="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <i data-lucide="globe" class="w-5 h-5 text-purple-400"></i> FRED 宏觀量化曲線
-                </h2>
-                <div id="macro-container" class="space-y-4"></div>
             </div>
         </div>
     </main>
 
     <script>
         lucide.createIcons();
-        let currentAsset = '台股加權';
-        let currentTimeframe = 'daily';
-        let currentCategory = '股市';
-        let globalData = null;
-        let mainChart = null;
-        let tickerTimer = null;
-        let tickerIndex = 0;
+        let currentAsset = '台股加權', currentTimeframe = 'daily', currentCategory = '股市', currentView = 'chart';
+        let globalData = null, mainChart = null, rsiChart = null, macdChart = null, flowChart = null;
+        let tickerTimer = null, tickerIndex = 0;
 
         async function fetchData() {
             try {
                 const res = await fetch('/api/terminal');
                 const data = await res.json();
+                const isFirst = !globalData;
                 globalData = data;
-                renderUI();
-            } catch (e) {
-                console.error("Fetch Error:", e);
-                const log = document.getElementById('log-feed');
-                if (log) log.innerHTML = `<div class="text-red-500">[ERROR] Data Pipeline Offline.</div>` + log.innerHTML;
-            }
+                if (isFirst) renderInitialUI();
+                else updateUI();
+                fetchInstitutional();
+            } catch (e) { console.error(e); }
         }
 
-        function createTickerItem(k, v) {
-            return `
-                <div class="ticker-item mono">
-                    <span class="text-zinc-500 font-bold truncate">${k}</span>
-                    <div class="val-row w-full mt-0.5">
-                        <span class="font-bold">${v.current.toLocaleString()}</span>
-                        <span class="${v.change >= 0 ? 'terminal-green' : 'text-red-500'} font-bold ml-1 text-[9px]">[${v.change >= 0 ? '+' : ''}${v.pct}%]</span>
-                    </div>
-                </div>
-            `;
+        async function fetchInstitutional() {
+            try {
+                const res = await fetch('/api/institutional?stock_id=2330');
+                const data = await res.json();
+                renderFlowChart(data);
+            } catch (e) {}
         }
 
-        function setupUnifiedTicker(allItems) {
+        async function fetchCorrelation() {
+            try {
+                const res = await fetch('/api/correlation');
+                const data = await res.json();
+                renderCorrelation(data);
+            } catch (e) {}
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.subtab-btn').forEach(b => {
+                b.classList.remove('subtab-active');
+                b.classList.add('text-zinc-500');
+            });
+            document.getElementById(`tab-${view}`).classList.add('subtab-active');
+            document.getElementById(`tab-${view}`).classList.remove('text-zinc-500');
+            
+            document.getElementById('chart-view').classList.toggle('hidden', view !== 'chart');
+            document.getElementById('corr-view').classList.toggle('hidden', view !== 'corr');
+            
+            if (view === 'corr') fetchCorrelation();
+            else updateMainChart(true);
+        }
+
+        function renderCorrelation(data) {
+            const container = document.getElementById('corr-matrix');
+            const keys = Object.keys(data);
+            let html = '<div class="flex"><div class="corr-cell border-none"></div>' + keys.map(k => `<div class="corr-cell text-zinc-400 font-bold">${k}</div>`).join('') + '</div>';
+            
+            keys.forEach(rowKey => {
+                html += `<div class="flex"><div class="corr-cell text-zinc-400 font-bold">${rowKey}</div>`;
+                keys.forEach(colKey => {
+                    const val = data[rowKey][colKey];
+                    const opacity = Math.abs(val);
+                    const color = val > 0 ? `rgba(0, 255, 65, ${opacity})` : `rgba(239, 68, 68, ${opacity})`;
+                    html += `<div class="corr-cell" style="background: ${color}; color: ${opacity > 0.5 ? '#000' : '#fff'}">${val}</div>`;
+                });
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function renderFlowChart(data) {
+            const ctx = document.getElementById('flow-chart').getContext('2d');
+            if (flowChart) flowChart.destroy();
+            const labels = data['外資'].map(p => p.t.slice(5));
+            flowChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: '外資', data: data['外資'].map(p => p.v / 1000000), backgroundColor: '#00ff41' },
+                        { label: '投信', data: data['投信'].map(p => p.v / 1000000), backgroundColor: '#00d2ff' },
+                        { label: '自營', data: data['自營商'].map(p => p.v / 1000000), backgroundColor: '#bc13fe' }
+                    ]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x: { display: false }, y: { display: false } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderInitialUI() {
+            const indices = Object.entries(globalData.indices);
+            setupTicker(indices);
+            const selector = document.getElementById('asset-selector');
+            selector.innerHTML = indices.map(([name, v]) => `<option value="${name}">${v.is_macro ? '● ' : ''}${name}</option>`).join('');
+            selector.value = currentAsset;
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('corr-val').innerText = globalData.quant.liquidity_correlation;
+            document.getElementById('log-feed').innerHTML = globalData.logs.map(log => `<div class="mb-0.5">${log}</div>`).join('');
+            renderLiveMonitor();
+            updateMainChart(false);
+        }
+
+        function setupTicker(allItems) {
             const track = document.getElementById('track-1');
-            if (!allItems || allItems.length === 0 || !track) return;
-            const html = allItems.map(([k, v]) => createTickerItem(k, v)).join('');
-            track.innerHTML = html + html + html; 
-            const count = allItems.length;
+            const items = allItems.filter(([_, v]) => !v.is_macro);
+            const html = items.map(([k, v]) => `<div class="ticker-item mono"><span class="text-zinc-500 font-bold truncate">${k}</span><div class="flex justify-between mt-0.5"><span class="font-bold">${v.current.toLocaleString()}</span><span class="${v.change >= 0 ? 'terminal-green' : 'text-red-500'} font-bold text-[9px]">[${v.pct}%]</span></div></div>`).join('');
+            track.innerHTML = html + html;
             if (tickerTimer) clearInterval(tickerTimer);
             tickerIndex = 0;
-            track.style.transition = 'none';
-            track.style.transform = `translateX(0vw)`;
-            void track.offsetWidth;
             tickerTimer = setInterval(() => {
                 tickerIndex++;
                 track.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
                 track.style.transform = `translateX(-${tickerIndex * 10}vw)`;
-                if (tickerIndex >= count) {
-                    setTimeout(() => {
-                        track.style.transition = 'none';
-                        tickerIndex = 0;
-                        track.style.transform = `translateX(0vw)`;
-                    }, 800);
-                }
-            }, 3000);
+                if (tickerIndex >= items.length) { setTimeout(() => { track.style.transition = 'none'; tickerIndex = 0; track.style.transform = 'translateX(0vw)'; }, 800); }
+            }, 4000);
         }
 
         function switchCategory(cat) {
             currentCategory = cat;
-            document.querySelectorAll('.cat-btn').forEach(b => {
-                b.classList.remove('bg-zinc-800', 'text-white');
-                b.classList.add('text-zinc-500');
-            });
-            document.getElementById(`cat-${cat}`).className = "cat-btn text-sm px-3 py-1.5 rounded bg-zinc-800 text-white font-bold";
+            document.querySelectorAll('.cat-btn').forEach(b => { b.classList.remove('bg-zinc-800', 'text-white'); b.classList.add('text-zinc-500'); });
+            document.getElementById(`cat-${cat}`).className = "cat-btn text-xs px-2 py-1 rounded bg-zinc-800 text-white font-bold";
             renderLiveMonitor();
         }
 
         function renderLiveMonitor() {
-            if (!globalData || !globalData.indices) return;
             const container = document.getElementById('live-monitor-container');
             container.innerHTML = '';
             let displayIndex = 0;
             Object.entries(globalData.indices).forEach(([name, v]) => {
                 if (v.category !== currentCategory) return;
                 const div = document.createElement('div');
-                const bgClass = displayIndex % 2 === 0 ? 'bg-zinc-900/60' : 'bg-transparent';
-                div.className = `flex items-center justify-between py-3 px-4 ${bgClass} hover:bg-zinc-700/50 cursor-pointer transition-colors`;
-                div.onclick = () => { document.getElementById('asset-selector').value = name; currentAsset = name; updateMainChart(); };
-                div.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="text-base font-bold text-zinc-300 mb-0.5">${name}</span>
-                        <span class="text-lg font-bold mono ${v.change >= 0 ? 'terminal-green' : 'text-red-500'}">${v.current.toLocaleString()}</span>
-                    </div>
-                    <div class="text-base font-bold mono ${v.change >= 0 ? 'text-green-500' : 'text-red-500'}">${v.pct}%</div>
-                `;
+                const active = currentAsset === name ? 'ring-1 ring-blue-500 bg-zinc-800' : '';
+                div.className = `flex items-center justify-between py-3 px-4 ${displayIndex % 2 === 0 ? 'bg-zinc-900/60' : ''} ${active} hover:bg-zinc-700/50 cursor-pointer transition-colors`;
+                div.onclick = () => { currentAsset = name; document.getElementById('asset-selector').value = name; updateUI(); };
+                const valColor = v.is_macro ? 'terminal-purple' : (v.change >= 0 ? 'terminal-green' : 'text-red-500');
+                div.innerHTML = `<div class="flex flex-col"><span class="text-base font-bold text-zinc-300 mb-0.5">${name}</span><span class="text-lg font-bold mono ${valColor}">${v.is_macro ? v.current + v.unit : v.current.toLocaleString()}</span></div><div class="text-base font-bold mono ${valColor}">${v.is_macro ? '趨勢: ' + v.trend : v.pct + '%'}</div>`;
                 container.appendChild(div);
                 displayIndex++;
             });
         }
 
-        function loadMacroCurve(name) {
-            const macroData = globalData.reports[name];
-            if (!macroData || !macroData.series) return;
-            renderCustomChart(name, macroData.series, '#bc13fe');
-        }
-
-        function renderCustomChart(label, series, color) {
+        function updateMainChart(withAnim = false) {
+            const data = globalData.indices[currentAsset];
+            if (!data) return;
+            const series = data.series[currentTimeframe] || data.series['daily'];
+            const color = data.is_macro ? '#bc13fe' : '#00d2ff';
+            
+            // Render Price Chart
             const ctx = document.getElementById('main-chart').getContext('2d');
             if (mainChart) mainChart.destroy();
             mainChart = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: series.map(p => p.t),
-                    datasets: [{
-                        label: label,
-                        data: series.map(p => p.v),
-                        borderColor: color,
-                        borderWidth: 3,
-                        fill: true,
-                        backgroundColor: color + '15',
-                        tension: 0.3,
-                        pointRadius: 4,
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { color: '#1a1a1a' }, ticks: { color: '#aaa', font: { weight: 'bold' } } },
-                        y: { grid: { color: '#1a1a1a' }, ticks: { color: '#aaa', font: { weight: 'bold' } } }
-                    }
-                }
-            });
-        }
-
-        function renderUI() {
-            if (!globalData) return;
-            setupUnifiedTicker(Object.entries(globalData.indices));
-            renderLiveMonitor();
-            
-            const selector = document.getElementById('asset-selector');
-            if (selector.options.length === 0) {
-                Object.keys(globalData.indices).forEach(name => {
-                    const opt = document.createElement('option');
-                    opt.value = name; opt.innerText = name; selector.appendChild(opt);
-                });
-            }
-
-            document.getElementById('corr-val').innerText = globalData.quant.liquidity_correlation;
-            document.getElementById('flow-val').innerText = `${(globalData.flows.value / 1000000).toFixed(1)}M`;
-            document.getElementById('log-feed').innerHTML = globalData.logs.map(log => `<div class="mb-0.5">${log}</div>`).join('');
-
-            const macroContainer = document.getElementById('macro-container');
-            macroContainer.innerHTML = '';
-            Object.entries(globalData.reports).forEach(([k, v]) => {
-                const card = document.createElement('div');
-                card.className = "p-4 border border-zinc-800 bg-zinc-900/40 rounded-lg cursor-pointer hover:border-purple-500 transition-all";
-                card.onclick = () => loadMacroCurve(k);
-                card.innerHTML = `
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-sm text-zinc-300 font-bold">${k}</span>
-                        <span class="text-[10px] mono text-purple-400 px-1 border border-purple-500/20 rounded">${v.period}</span>
-                    </div>
-                    <div class="text-2xl font-bold mono text-white mt-2">${v.value}${v.unit}</div>
-                    <div class="text-xs text-zinc-500 mt-1 font-bold">點擊載入歷史曲線 ➔</div>
-                `;
-                macroContainer.appendChild(card);
+                data: { labels: series.map(p => p.t), datasets: [{ label: currentAsset, data: series.map(p => p.v), borderColor: color, borderWidth: 3, fill: true, backgroundColor: color + '15', tension: 0.3, pointRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, animation: { duration: withAnim ? 400 : 0 }, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#1a1a1a' }, ticks: { color: '#aaa', font: { weight: 'bold' } } } } }
             });
 
-            updateMainChart();
-        }
+            // RSI Chart
+            const rsiCtx = document.getElementById('rsi-chart').getContext('2d');
+            if (rsiChart) rsiChart.destroy();
+            rsiChart = new Chart(rsiCtx, {
+                type: 'line',
+                data: { labels: series.map(p => p.t), datasets: [{ data: series.map(p => p.rsi), borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { min: 20, max: 80, grid: { color: '#222' }, ticks: { size: 8, color: '#666' } } } }
+            });
 
-        function updateMainChart() {
-            if (!globalData || !globalData.indices[currentAsset]) return;
-            const assetData = globalData.indices[currentAsset];
-            renderCustomChart(currentAsset, assetData.series[currentTimeframe], '#00d2ff');
+            // MACD Chart
+            const macdCtx = document.getElementById('macd-chart').getContext('2d');
+            if (macdChart) macdChart.destroy();
+            macdChart = new Chart(macdCtx, {
+                type: 'bar',
+                data: { labels: series.map(p => p.t), datasets: [{ data: series.map(p => p.macd), backgroundColor: '#00ff41' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#222' }, ticks: { size: 8, color: '#666' } } } }
+            });
         }
 
         function switchTimeframe(tf) {
             currentTimeframe = tf;
-            document.querySelectorAll('.tf-btn').forEach(b => {
-                b.classList.remove('tab-active', 'text-white');
-                b.classList.add('text-zinc-500');
-            });
+            document.querySelectorAll('.tf-btn').forEach(b => { b.classList.remove('tab-active', 'text-white'); b.classList.add('text-zinc-500'); });
             document.getElementById(`btn-${tf}`).className = "tf-btn tab-active text-base font-bold pb-1 text-white";
-            updateMainChart();
+            updateMainChart(true);
         }
 
-        document.getElementById('asset-selector').onchange = (e) => { currentAsset = e.target.value; updateMainChart(); };
-        setInterval(() => {
-            let timer = document.getElementById('refresh-timer');
-            let secs = parseInt(timer.innerText) - 1;
-            if (secs <= 0) { fetchData(); secs = 15; }
-            timer.innerText = secs + 's';
-        }, 1000);
-
+        document.getElementById('asset-selector').onchange = (e) => { currentAsset = e.target.value; updateUI(); };
+        setInterval(() => { let timer = document.getElementById('refresh-timer'); let secs = parseInt(timer.innerText) - 1; if (secs <= 0) { fetchData(); secs = 60; } timer.innerText = secs + 's'; }, 1000);
         fetchData();
     </script>
 </body>
