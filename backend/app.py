@@ -1,4 +1,5 @@
 import os
+import json
 import yfinance as yf
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -9,7 +10,25 @@ import numpy as np
 import pandas_datareader.data as web
 from FinMind.data import DataLoader
 
+from fastapi import FastAPI, BackgroundTasks
+...
 app = FastAPI(title="全球金融大數據量化終端")
+
+def background_prewarm():
+    """自動在背景預熱所有數據緩存"""
+    orchestrator.add_log("⚡ 啟動自動同步引擎...")
+    # 1. 預熱主畫面宏觀數據
+    orchestrator.fetch_fred_macro()
+    # 2. 預熱各國儀表板數據
+    for country in ["美國", "台灣", "日本", "新加坡"]:
+        macro_dash.fetch_country_data(country)
+    orchestrator.add_log("✅ 全球總經數據同步完成")
+
+@app.on_event("startup")
+async def startup_event():
+    import threading
+    # 使用線程異步執行，避免阻塞主程序啟動
+    threading.Thread(target=background_prewarm, daemon=True).start()
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,6 +38,40 @@ app.add_middleware(
 )
 
 dl = DataLoader()
+
+class PersistentCache:
+    def __init__(self, filename, expiry_hours=24):
+        self.path = os.path.join("/app/data", filename)
+        self.expiry = timedelta(hours=expiry_hours)
+        os.makedirs("/app/data", exist_ok=True)
+
+    def get(self, key):
+        if not os.path.exists(self.path): return None
+        try:
+            with open(self.path, 'r') as f:
+                cache = json.load(f)
+                entry = cache.get(key)
+                if entry:
+                    cached_time = datetime.fromisoformat(entry["time"])
+                    if datetime.now() - cached_time < self.expiry:
+                        return entry["data"]
+        except Exception: pass
+        return None
+
+    def set(self, key, data):
+        cache = {}
+        if os.path.exists(self.path):
+            try:
+                with open(self.path, 'r') as f: cache = json.load(f)
+            except Exception: pass
+        
+        cache[key] = {
+            "data": data,
+            "time": datetime.now().isoformat()
+        }
+        try:
+            with open(self.path, 'w') as f: json.dump(cache, f)
+        except Exception: pass
 
 # Symbols with Categories
 SYMBOLS = {
@@ -34,6 +87,7 @@ SYMBOLS = {
 class MarketDataOrchestrator:
     def __init__(self):
         self.log_feed = []
+        self.macro_cache = PersistentCache("terminal_macro.json", expiry_hours=12)
 
     def add_log(self, msg):
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -126,6 +180,10 @@ class MarketDataOrchestrator:
         except Exception: return None
 
     def fetch_fred_macro(self):
+        # 優先從持久化緩存讀取
+        cached = self.macro_cache.get("global_macro")
+        if cached: return cached
+
         try:
             self.add_log("正在同步全球宏觀數據...")
             start = datetime.now() - timedelta(days=365*5)
@@ -204,6 +262,9 @@ class MarketDataOrchestrator:
                         }
                     }
 
+            if macro_results:
+                self.macro_cache.set("global_macro", macro_results)
+
             return macro_results
         except Exception as e:
             self.add_log(f"宏觀數據同步異常: {str(e)}")
@@ -214,8 +275,7 @@ orchestrator = MarketDataOrchestrator()
 
 class MacroDashboardOrchestrator:
     def __init__(self):
-        self.cache = {} # {country: {"data": results, "time": datetime}}
-        self.cache_duration = timedelta(hours=24)
+        self.dash_cache = PersistentCache("macro_dashboard.json", expiry_hours=24)
         self.country_map = {
             "美國": {
                 "Growth": {"GDP YoY": "A191RL1Q225SBEA", "PMI": "ISM/MAN_PMI"}, 
@@ -224,7 +284,7 @@ class MacroDashboardOrchestrator:
                 "Rates": {"Fed Funds": "FEDFUNDS", "10Y Yield": "^TNX"},
                 "Labor": {"Unemployment": "UNRATE"},
                 "FX": {"DXY": "DX-Y.NYB"},
-                "Asset": {"S&P 500": "^GSPC"}
+                "Asset": {"S&P 500": "^GSPC", "Nasdaq": "^IXIC", "US 10Y": "^TNX"}
             },
             "台灣": {
                 "Growth": {"GDP Proxy": "^TWII"}, 
@@ -233,22 +293,25 @@ class MacroDashboardOrchestrator:
                 "Rates": {"10Y Yield": "TWM10Y=RR"},
                 "Labor": {"Unemployment": "TWMUNR"},
                 "FX": {"USD/TWD": "TWD=X"},
-                "Asset": {"TAIEX": "^TWII"}
+                "Asset": {"TAIEX": "^TWII", "台灣 50": "0050.TW"}
             },
             "日本": {
                 "Growth": {"Nikkei Proxy": "^N225"},
                 "Inflation": {"CPI": "JPNCPIALLMINMEI"},
                 "FX": {"USD/JPY": "JPY=X"},
-                "Asset": {"Nikkei 225": "^N225"}
+                "Asset": {"Nikkei 225": "^N225", "TOPIX": "^TPX"}
+            },
+            "新加坡": {
+                "Growth": {"STI Proxy": "^STI"},
+                "FX": {"USD/SGD": "SGD=X"},
+                "Asset": {"STI Index": "^STI"}
             }
         }
 
     def fetch_country_data(self, country):
-        # 1. 檢查緩存
-        if country in self.cache:
-            entry = self.cache[country]
-            if datetime.now() - entry["time"] < self.cache_duration:
-                return entry["data"]
+        # 1. 檢查持久化緩存
+        cached = self.dash_cache.get(country)
+        if cached: return cached
 
         config = self.country_map.get(country, self.country_map["美國"])
         results = {}
@@ -282,9 +345,9 @@ class MacroDashboardOrchestrator:
                             })
                 except Exception: pass
         
-        # 2. 更新緩存
+        # 2. 更新持久化緩存
         if results:
-            self.cache[country] = {"data": results, "time": datetime.now()}
+            self.dash_cache.set(country, results)
             
         return results
 
