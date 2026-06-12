@@ -42,7 +42,8 @@ async function loadGlobalOverview() {
 }
 
 async function loadCountryData(country) {
-    document.getElementById('country-title').innerText = `${country} Macro Dashboard`;
+    const countryNames = {"US": "美國", "TW": "台灣", "JP": "日本", "SG": "新加坡"};
+    document.getElementById('country-title').innerText = `${countryNames[country] || country} 總體經濟儀表板`;
     document.querySelectorAll('#country-sidebar button').forEach(btn => btn.classList.remove('text-blue-500'));
     document.getElementById(`c-${country}`).classList.add('text-blue-500');
 
@@ -51,9 +52,17 @@ async function loadCountryData(country) {
     grid.innerHTML = data.map((ind, idx) => {
         const color = ind.trend === 'up' ? '#00ff41' : '#ef4444';
         const colorClass = ind.trend === 'up' ? 'text-green-500' : 'text-red-500';
+        
+        const categoryLabels = {
+            "Growth": "經濟成長", "Inflation": "通膨物價", "Liquidity": "資金流動性", 
+            "Rates": "利率水準", "Labor": "勞動力市場", "Trade": "國際貿易", 
+            "FX": "匯率走勢", "Asset": "資產市場"
+        };
+        const catLabel = categoryLabels[ind.category] || ind.category;
+
         return `
             <div class="panel p-4 flex flex-col gap-2">
-                <div class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">${ind.category}</div>
+                <div class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">${catLabel}</div>
                 <div class="flex justify-between items-end">
                     <span class="text-sm font-black text-white">${ind.name}</span>
                     <div class="flex flex-col items-end">

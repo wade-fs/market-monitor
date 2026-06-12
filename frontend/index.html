@@ -1,29 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Macro Intelligence Platform v4.0</title>
+    <title>總體經濟情報平台 v4.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-zinc-950 text-white h-screen flex flex-col overflow-hidden font-sans">
     <header class="h-14 border-b border-zinc-800 flex justify-between items-center px-6 bg-black">
         <h1 class="text-xl font-black text-blue-500 tracking-tighter">MACRO<span class="text-zinc-500">v4.0</span></h1>
         <div class="flex gap-4">
-            <button onclick="switchView('overview')" class="nav-btn active" id="nav-overview">Global Overview</button>
-            <button onclick="switchView('country')" class="nav-btn" id="nav-country">Country Dashboards</button>
+            <button onclick="switchView('overview')" class="nav-btn active" id="nav-overview">全球總經概觀</button>
+            <button onclick="switchView('country')" class="nav-btn" id="nav-country">國家經濟儀表板</button>
         </div>
     </header>
 
     <main class="flex-1 flex overflow-hidden">
         <!-- Sidebar (Countries) - Only visible in Country View -->
         <aside id="country-sidebar" class="w-48 border-r border-zinc-800 bg-zinc-900 hidden flex flex-col">
-            <button onclick="loadCountryData('US')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-US">United States</button>
-            <button onclick="loadCountryData('TW')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-TW">Taiwan</button>
-            <button onclick="loadCountryData('JP')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-JP">Japan</button>
-            <button onclick="loadCountryData('SG')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-SG">Singapore</button>
+            <button onclick="loadCountryData('US')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-US">美國</button>
+            <button onclick="loadCountryData('TW')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-TW">台灣</button>
+            <button onclick="loadCountryData('JP')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-JP">日本</button>
+            <button onclick="loadCountryData('SG')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-SG">新加坡</button>
         </aside>
 
         <!-- Dynamic Content Area -->
@@ -32,27 +33,27 @@
             <div id="view-overview" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="panel p-4 h-64 flex flex-col">
-                        <h3 class="text-sm text-zinc-500 uppercase font-bold mb-2">Global Risk Score</h3>
+                        <h3 class="text-sm text-zinc-500 uppercase font-bold mb-2">全球風險評分</h3>
                         <div id="risk-gauge" class="flex-1 w-full h-full"></div>
                     </div>
                     <div class="panel p-4 h-64 flex flex-col">
-                        <h3 class="text-sm text-zinc-500 uppercase font-bold mb-2">Liquidity Heatmap</h3>
+                        <h3 class="text-sm text-zinc-500 uppercase font-bold mb-2">資金流動性熱力圖</h3>
                         <div id="liquidity-heatmap" class="flex-1 w-full h-full"></div>
                     </div>
                     <div class="panel p-4 h-64 flex flex-col">
-                        <h3 class="text-sm text-zinc-500 uppercase font-bold mb-2">Inflation Heatmap</h3>
+                        <h3 class="text-sm text-zinc-500 uppercase font-bold mb-2">通膨壓力熱力圖</h3>
                         <div id="inflation-heatmap" class="flex-1 w-full h-full"></div>
                     </div>
                 </div>
                 <div class="panel p-4">
-                    <h3 class="text-sm text-zinc-500 uppercase font-bold mb-4">Major Markets</h3>
+                    <h3 class="text-sm text-zinc-500 uppercase font-bold mb-4">主要市場行情</h3>
                     <div id="markets-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
                 </div>
             </div>
 
             <!-- Country Dashboard -->
             <div id="view-country" class="hidden">
-                <h2 id="country-title" class="text-2xl font-black mb-6">Select a Country</h2>
+                <h2 id="country-title" class="text-2xl font-black mb-6">請選擇國家</h2>
                 <div id="country-indicators" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
             </div>
         </div>
