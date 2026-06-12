@@ -70,10 +70,12 @@ class MarketDataOrchestrator:
             
             def format_series(data):
                 # Returns list of {t: timestamp, v: value}
-                return [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 2) if np.isfinite(v) else None} 
-                        for t, v in data.items()]
+                # Drop rows with NaN after resampling to ensure continuous lines
+                clean_data = data.dropna()
+                return [{"t": t.strftime('%Y-%m-%d'), "v": round(float(v), 2)} 
+                        for t, v in clean_data.items()]
 
-            # Timeframe series with dates
+            # Timeframe series with dates - ensure gaps are handled
             daily = format_series(close.tail(30))
             weekly = format_series(close.resample('W').last().tail(20))
             monthly = format_series(close.resample('ME').last().tail(12))
