@@ -1,73 +1,58 @@
-# models.py — 統一資料格式（對應 MACRO_PLATFORM_V4.md 規格）
-
 from dataclasses import dataclass, field, asdict
 from typing import Optional, List
-from datetime import datetime
-
 
 @dataclass
 class SeriesPoint:
-    t: str    # ISO date string "2026-01-01"
-    v: float  # value
-
+    t: str
+    v: float
 
 @dataclass
 class Indicator:
-    id:         str
-    country:    str
-    category:   str          # Growth / Inflation / Liquidity / Rates / Labor / Trade / FX / Market
-    name:       str
-    unit:       str
-    frequency:  str          # daily / monthly / quarterly
-    current:    Optional[float]
-    previous:   Optional[float]
-    change:     Optional[float]
-    trend:      str          # up / down / flat / unknown
-    updated_at: str
-    series:     List[SeriesPoint] = field(default_factory=list)
-    source:     str = ""     # fred / finmind / yfinance
-    error:      Optional[str] = None
-
+    id: str; country: str; category: str; name: str; unit: str; frequency: str
+    current: Optional[float]; previous: Optional[float]; change: Optional[float]
+    trend: str; updated_at: str
+    series: List[SeriesPoint] = field(default_factory=list)
+    source: str = ""; error: Optional[str] = None
     def to_dict(self):
-        d = asdict(self)
-        d["series"] = [{"t": p.t, "v": p.v} for p in self.series]
-        return d
-
+        d = asdict(self); d["series"] = [{"t":p.t,"v":p.v} for p in self.series]; return d
 
 @dataclass
-class HeatmapCell:
-    country:   str
-    indicator: str
-    value:     Optional[float]
-    signal:    int           # 1=positive 0=neutral -1=negative
-    label:     str
-
-
-@dataclass
-class CountryDashboard:
-    country:    str
-    updated_at: str
-    growth:     List[dict] = field(default_factory=list)
-    inflation:  List[dict] = field(default_factory=list)
-    liquidity:  List[dict] = field(default_factory=list)
-    rates:      List[dict] = field(default_factory=list)
-    labor:      List[dict] = field(default_factory=list)
-    trade:      List[dict] = field(default_factory=list)
-    fx:         List[dict] = field(default_factory=list)
-    markets:    List[dict] = field(default_factory=list)
-
-    def to_dict(self):
-        return asdict(self)
-
+class StockQuote:
+    ticker: str; name: str; country: str
+    price: Optional[float]; change: Optional[float]; pct: Optional[float]
+    volume: Optional[float]; market_cap: Optional[float]; updated_at: str
+    error: Optional[str] = None
+    def to_dict(self): return asdict(self)
 
 @dataclass
-class GlobalOverview:
-    risk_score:   float
-    risk_label:   str         # Low / Moderate / Elevated / High
-    updated_at:   str
-    kpis:         List[dict] = field(default_factory=list)   # 精選重要指標
-    heatmap:      dict        = field(default_factory=dict)
-    markets:      List[dict] = field(default_factory=list)
+class Fundamentals:
+    ticker: str; name: str; country: str; period: str
+    revenue: Optional[float] = None; gross_profit: Optional[float] = None
+    operating_income: Optional[float] = None; net_income: Optional[float] = None
+    eps: Optional[float] = None; revenue_yoy: Optional[float] = None
+    eps_yoy: Optional[float] = None; gross_margin: Optional[float] = None
+    op_margin: Optional[float] = None; net_margin: Optional[float] = None
+    total_assets: Optional[float] = None; total_liabilities: Optional[float] = None
+    equity: Optional[float] = None; cfo: Optional[float] = None
+    capex: Optional[float] = None; fcf: Optional[float] = None
+    source: str = ""; error: Optional[str] = None
+    def to_dict(self): return asdict(self)
 
-    def to_dict(self):
-        return asdict(self)
+@dataclass
+class Valuation:
+    ticker: str; name: str; country: str; date: str
+    pe: Optional[float] = None; pb: Optional[float] = None
+    ps: Optional[float] = None; ev_ebitda: Optional[float] = None
+    dividend_yield: Optional[float] = None; peg: Optional[float] = None
+    roe: Optional[float] = None; roa: Optional[float] = None
+    debt_equity: Optional[float] = None
+    source: str = ""; error: Optional[str] = None
+    def to_dict(self): return asdict(self)
+
+@dataclass
+class CompanySnapshot:
+    ticker: str; name: str; country: str; sector: str
+    quote: Optional[dict] = None
+    fundamentals: List[dict] = field(default_factory=list)
+    valuation: Optional[dict] = None; updated_at: str = ""
+    def to_dict(self): return asdict(self)

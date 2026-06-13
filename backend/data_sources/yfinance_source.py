@@ -1,0 +1,142 @@
+# data_sources/yfinance_source.py — 美股財報 + 行情（yfinance）
+import logging
+from datetime import datetime
+from typing import Optional, List
+import yfinance as yf
+import sys; sys.path.insert(0, '/home/claude/market-monitor-v4/backend')
+from models import StockQuote, Fundamentals, Valuation
+
+logger = logging.getLogger(__name__)
+
+
+def _ticker(symbol: str):
+    try:
+        return yf.Ticker(symbol)
+    except Exception as e:
+        logger.error(f"yf.Ticker({symbol}) 錯誤: {e}")
+        return None
+
+
+# ── 行情 ────────────────────────────────────────────────────────────
+
+def get_quote(symbol: str, name: str, country: str = "US") -> StockQuote:
+    t = _ticker(symbol)
+    today = datetime.now().strftime("%Y-%m-%d %H:%M")
+    if not t:
+        return StockQuote(ticker=symbol, name=name, country=country,
+                          price=None, change=None, pct=None,
+                          volume=None, market_cap=None, updated_at=today,
+                          error="yf.Ticker 建立失敗")
+    try:
+        info = t.fast_info
+        price = round(float(info.last_price), 2) if info.last_price else None
+        prev  = float(info.previous_close) if info.previous_close else price
+        change = round(price - prev, 2) if (price and prev) else None
+        pct    = round(change / prev * 100, 2) if (change and prev) else None
+        mktcap = round(float(info.market_cap) / 1e8, 2) if info.market_cap else None  # 億
+        vol    = float(info.three_month_average_volume) if info.three_month_average_volume else None
+        return StockQuote(ticker=symbol, name=name, country=country,
+                          price=price, change=change, pct=pct,
+                          volume=vol, market_cap=mktcap, updated_at=today)
+    except Exception as e:
+        return StockQuote(ticker=symbol, name=name, country=country,
+                          price=None, change=None, pct=None,
+                          volume=None, market_cap=None, updated_at=today,
+                          error=str(e))
+
+
+def get_price_series(symbol: str, period: str = "2y") -> list:
+    """回傳 [{t, v}] 日線收盤"""
+    try:
+        t = _ticker(symbol)
+        if not t: return []
+        df = t.history(period=period)
+        if df.empty: return []
+        close = df["Close"].dropna()
+        return [{"t": idx.strftime("%Y-%m-%d"), "v": round(float(v), 2)}
+                for idx, v in close.items()]
+    except Exception as e:
+        logger.error(f"get_price_series({symbol}): {e}")
+        return []
+
+
+# ── 美股財報 ────────────────────────────────────────────────────────
+
+def get_us_fundamentals(symbol: str, name: str) -> List[Fundamentals]:
+    """
+    從 yfinance 抓美股季度損益表 + 現金流量表，組成 Fundamentals 清單
+    """
+    t = _ticker(symbol)
+    if not t:
+        return []
+    results = []
+    try:
+        inc = t.quarterly_income_stmt    # columns = 日期, rows = 指標
+        cf  = t.quarterly_cashflow
+
+        if inc is None or inc.empty:
+            return []
+
+        for col in list(inc.columns)[:8]:   # 最近 8 季
+            period = col.strftime("%Y-%m-%d") if hasattr(col, 'strftime') else str(col)
+
+            def _val(df, *keys):
+                for k in keys:
+                    if k in df.index:
+                        v = df.loc[k, col]
+                        try: return float(v) / 1e6 if v and str(v) != 'nan' else None  # 轉百萬
+                        except: pass
+                return None
+
+            rev     = _val(inc, "Total Revenue", "Revenue")
+            gross   = _val(inc, "Gross Profit")
+            op_inc  = _val(inc, "Operating Income", "EBIT")
+            net_inc = _val(inc, "Net Income")
+            eps     = _val(inc, "Diluted EPS", "Basic EPS")
+            if eps: eps = eps * 1e6  # EPS 不需要除以百萬，還原
+            cfo     = _val(cf,  "Operating Cash Flow", "Cash Flow From Continuing Operating Activities")
+            capex   = _val(cf,  "Capital Expenditure")
+            fcf     = (cfo + capex) if (cfo is not None and capex is not None) else None
+
+            def pct(a, b): return round(a / b * 100, 2) if a and b else None
+
+            results.append(Fundamentals(
+                ticker=symbol, name=name, country="US", period=period,
+                revenue=rev, gross_profit=gross, operating_income=op_inc,
+                net_income=net_inc, eps=eps,
+                gross_margin=pct(gross, rev), op_margin=pct(op_inc, rev), net_margin=pct(net_inc, rev),
+                cfo=cfo, capex=capex, fcf=fcf,
+                source="yfinance"
+            ))
+    except Exception as e:
+        logger.error(f"get_us_fundamentals({symbol}): {e}")
+
+    return results
+
+
+# ── 美股估值 ────────────────────────────────────────────────────────
+
+def get_us_valuation(symbol: str, name: str) -> Valuation:
+    t = _ticker(symbol)
+    today = datetime.now().strftime("%Y-%m-%d")
+    if not t:
+        return Valuation(ticker=symbol, name=name, country="US", date=today,
+                         error="yf.Ticker 建立失敗", source="yfinance")
+    try:
+        info = t.info
+        def _f(k): return round(float(info[k]), 4) if info.get(k) else None
+        return Valuation(
+            ticker=symbol, name=name, country="US", date=today,
+            pe=_f("trailingPE"), pb=_f("priceToBook"),
+            ps=_f("priceToSalesTrailing12Months"),
+            ev_ebitda=_f("enterpriseToEbitda"),
+            dividend_yield=round(float(info["dividendYield"]) * 100, 2) if info.get("dividendYield") else None,
+            peg=_f("pegRatio"),
+            roe=round(float(info["returnOnEquity"]) * 100, 2) if info.get("returnOnEquity") else None,
+            roa=round(float(info["returnOnAssets"]) * 100, 2) if info.get("returnOnAssets") else None,
+            debt_equity=_f("debtToEquity"),
+            source="yfinance"
+        )
+    except Exception as e:
+        return Valuation(ticker=symbol, name=name, country="US", date=today,
+                         error=str(e), source="yfinance")

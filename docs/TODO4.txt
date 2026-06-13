@@ -1,0 +1,53 @@
+我想規劃個體經或、市場經濟，主要研究台灣與美國、日本，能幫忙實作嗎？
+企業財報分析與股市估值可以台灣只針對 top5 或 top10, 美國只針對 top50 或 top100
+Q: 台灣與美國的股票清單要怎麼定義「Top」？
+A: 指數成分股（台灣用 TWSE50，美國用 S&P100）
+
+Q: 企業財報資料來源偏好？
+A: FinMind（台股較完整，需 token）
+
+Q: 實作方式？
+A: 依照 V4 重構方向全新架構
+
+
+專案結構market-monitor-v4/
+├── backend/
+│   ├── app.py                  ← FastAPI，lifespan 啟動就跑收集器
+│   ├── config.py               ← 所有 FRED Series ID、排程間隔、Symbols
+│   ├── models.py               ← Indicator / Fundamentals / Valuation 統一格式
+│   ├── cache.py                ← JSON 檔案快取（TTL based）
+│   ├── universe.py             ← TWSE50（FinMind ID）+ S&P100（yfinance）
+│   ├── data_sources/
+│   │   ├── fred.py             ← FRED REST API，帶重試
+│   │   ├── finmind.py          ← 台股財報 / M2 / 估值 / 三大法人
+│   │   └── yfinance_source.py  ← 美股財報 + 行情
+│   ├── scheduler/
+│   │   └── collector.py        ← 三條背景執行緒（market/macro/fundamentals）
+│   └── services/
+│       └── macro_service.py    ← 讀 cache，組裝 API 回傳
+├── data/                       ← Docker volume 掛載點（container 外儲存）
+│   ├── cache/                  ← JSON 快取檔
+│   ├── logs/                   ← collector.log
+│   └── snapshots/              ← 每次抓完的時間戳快照
+└── docker-compose.yml
+
+三條排程執行緒
+執行緒    | 間隔      |  資料來源 | 抓什麼 |
+----------|-----------|-----------|--------|
+market    | 每 15 分鐘| yfinance  | 指數 / FX / Crypto / 商品 |
+macro     | 每 6 小時 |FRED + FinMind | 美台日 CPI / M2 / 利率 / 就業
+fundamentals | 每 24 小時 | FinMind |（台）/ yfinance（美）TWSE50 + S&P100 財報、估值|
+
+API 端點
+端點                      |         用途 |
+--------------------------|--------------|
+GET /api/global           | 首頁 KPI + 主要市場|
+GET /api/heatmap          | Liquidity / Inflation heatmap（signal 1/0/-1）|
+GET /api/macro/TW         | 台灣總經（CPI / M2 / 出口 / 失業）|
+GET /api/macro/US         | 美國總經（Fed / CPI / M2 / GDP / NFP）|
+GET /api/macro/JP         | 日本總經 |
+GET /api/stocks/TW/valuation | TWSE50 估值排行（P/E / P/B / 殖利率）|
+GET /api/stocks/US/valuation | S&P100 估值排行 |
+GET /api/stocks/TW/2330      | 台積電完整快照（行情 + 8季財報 + 估值）|
+GET /api/stocks/US/NVDANVIDIA | 完整快照 |
+GET /api/statusCache 狀態 + 各資料集是否 ready |
