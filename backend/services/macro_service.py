@@ -18,8 +18,10 @@ COUNTRY_MACRO_KEYS = {
            "US_10Y", "US_2Y", "US_10Y2Y", "US_GDP_YOY", "US_UNEMPLOYMENT",
            "US_NFP", "US_RETAIL"],
     "JP": ["JP_CPI", "JP_UNEMPLOYMENT", "JP_M2", "JP_POLICY_RATE"],
+    "SG": ["SG_CPI"],
 }
 
+COUNTRIES = ["US", "TW", "JP", "SG"]
 CATEGORY_ORDER = ["Growth", "Inflation", "Liquidity", "Rates", "Labor", "Trade", "FX", "Market"]
 
 

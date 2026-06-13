@@ -7,6 +7,9 @@ CACHE_DIR     = DATA_DIR / "cache"
 LOGS_DIR      = DATA_DIR / "logs"
 SNAPSHOT_DIR  = DATA_DIR / "snapshots"
 
+for d in [CACHE_DIR, LOGS_DIR, SNAPSHOT_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
+
 FRED_API_KEY  = os.getenv("FRED_API_KEY", "")
 FINMIND_TOKEN = os.getenv("FINMIND_TOKEN", "")
 

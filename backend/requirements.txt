@@ -4,6 +4,8 @@ yfinance==0.2.51
 pandas==2.2.2
 numpy==1.26.4
 requests==2.32.3
-FinMind==0.9.1
+pandas-datareader==0.10.0
+FinMind>=1.6.0
 APScheduler==3.10.4
 python-dotenv==1.0.1
+redis

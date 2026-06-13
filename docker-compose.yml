@@ -1,11 +1,9 @@
-version: "3.9"
-
 services:
   backend:
     build: ./backend
     container_name: macro-monitor-v4
     ports:
-      - "16888:6666"
+      - "16888:8000"
     volumes:
       # Docker 外部儲存：./data 掛載到 /data
       - ./data:/data
@@ -15,7 +13,7 @@ services:
       - FINMIND_TOKEN=${FINMIND_TOKEN}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6666/api/status"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/status"]
       interval: 60s
       timeout: 10s
       retries: 3
