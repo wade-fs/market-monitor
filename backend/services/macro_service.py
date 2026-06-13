@@ -7,7 +7,7 @@ COUNTRIES = ["US", "TW", "JP", "SG"]
 
 INDICATOR_REGISTRY = {
     "US": {
-        "Growth": {"GDP YoY": "A191RL1Q225SBEA", "PMI": "MANPMI", "Retail Sales": "RETAILIRSA"},
+        "Growth": {"GDP YoY": "A191RL1Q225SBEA", "PMI": "MANPMI", "Retail Sales": "RETAILIRSA", "FRED Indicator": "SEZMAMQ027S"},
         "Inflation": {"CPI": "CPIAUCSL", "Core CPI": "CPILFESL", "PPI": "PPIACO"},
         "Liquidity": {"M1": "WM1NS", "M2": "M2SL"},
         "Rates": {"Fed Rate": "FEDFUNDS", "10Y Yield": "^TNX", "2Y Yield": "^IRX"},
