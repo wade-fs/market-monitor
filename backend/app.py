@@ -156,8 +156,3 @@ def api_status():
             "market": len(market_data)
         }
     }
-
-
-# ── 靜態前端 ────────────────────────────────────────────────────────
-os.makedirs("static", exist_ok=True)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")

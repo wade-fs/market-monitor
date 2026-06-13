@@ -1,19 +1,42 @@
 services:
   backend:
     build: ./backend
-    container_name: macro-monitor-v4
-    ports:
-      - "16888:8000"
-    volumes:
-      # Docker 外部儲存：./data 掛載到 /data
-      - ./data:/data
+    container_name: macro-monitor-backend
+    env_file:
+      - .env
     environment:
       - DATA_DIR=/data
-      - FRED_API_KEY=${FRED_API_KEY}
-      - FINMIND_TOKEN=${FINMIND_TOKEN}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./data:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/status"]
-      interval: 60s
+      interval: 30s
       timeout: 10s
       retries: 3
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: macro-monitor-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: macro-monitor-nginx
+    ports:
+      - "16888:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
