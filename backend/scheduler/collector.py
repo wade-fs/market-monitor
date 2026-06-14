@@ -83,22 +83,27 @@ def collect_market():
 # --- 核心邏輯 2: 低頻同步總經指標 ---
 def collect_macro():
     logger.info("=== [Spirit 5] 總經指標排程啟動 ===")
+    first_run = True
     while True:
         try:
-            # 修正：讀取現有快取
             result = cache.get("macro_all", 7*24*3600) or {}
             
-            # 1. FRED 資料
             items = list(FRED_SERIES.items())
-            random.shuffle(items)
+            if first_run: random.shuffle(items)
+            
             for key, cfg in items:
                 series_id, label, country, category, unit, frequency = cfg
+                # 如果快取已有且非初次啟動，可以跳過加速
+                if not first_run and key in result: continue
+                
                 ind = fred_src.fetch_series(series_id, label, country, category, unit, frequency, FRED_API_KEY, key)
                 if ind:
                     result[key] = ind.to_dict()
                     cache.set("macro_all", result)
                     logger.info(f"  [Macro] {label} 同步完成")
-                time.sleep(random.uniform(5, 15))
+                
+                # 初次啟動時加速 (2-5秒)，之後恢復慢速 (10-20秒)
+                time.sleep(random.uniform(2, 5) if first_run else random.uniform(10, 20))
 
             # 2. FinMind 台灣資料
             for fn, key in [(fm_src.get_tw_m2, "TW_M2"), (fm_src.get_tw_m1b, "TW_M1B"), (fm_src.get_tw_pmi, "TW_PMI")]:
@@ -109,9 +114,10 @@ def collect_macro():
                         cache.set("macro_all", result)
                         logger.info(f"  [Macro] {key} 同步完成")
                 except: pass
-                time.sleep(5)
+                time.sleep(2 if first_run else 5)
 
-            logger.info("✅ 總經指標同步完成。")
+            first_run = False
+            logger.info("✅ 總經指標一輪同步完成。")
         except Exception as e:
             logger.error(f"[Macro] 例外: {e}")
         

@@ -21,17 +21,13 @@ def _get(endpoint, params, api_key):
 
 def _gen_proxy(series_id, label, country, category, unit, frequency, key):
     """當 API 失敗時，生成具備常識基準的模擬數據"""
-    # 根據指標類型決定合理的基準值
     s_id = series_id.upper()
-    if any(k in s_id for k in ["UNRATE", "UNEMPLOYMENT", "RATE", "PERCENT", "PMI"]):
-        # 失業率/利率類: 3% - 5%
-        base = 3.8 if "UNRATE" in s_id or "UNEMPLOYMENT" in s_id else 2.5
-        if "PMI" in s_id: base = 50.0
+    # 核心邏輯：如果單位是 %，基準值必須很小
+    if unit == "%":
+        base = 3.5 if "UNRATE" in s_id or "UNEMPLOYMENT" in s_id else 2.1
     elif any(k in s_id for k in ["M2", "GDP", "DEBT", "RETAIL", "EXPORTS"]):
-        # 貨幣/產值類: 較大的數值
         base = 22000 if "US" in country else 5000
-    elif "CPI" in s_id:
-        # 指數類: 100 左右
+    elif "CPI" in s_id or unit == "index":
         base = 105.0
     else:
         base = 100.0
