@@ -75,6 +75,60 @@ async function loadGlobalOverview() {
 /**
  * COUNTRY DASHBOARD: Indicator Grids & Sparklines
  */
+/**
+ * 將專業單位轉換為直觀的中文化單位
+ */
+function formatMacroValue(val, unit, category) {
+    if (val === null || val === undefined) return '--';
+    
+    let displayVal = val;
+    let displayUnit = unit;
+
+    // 單位換算邏輯
+    if (unit === 'B$') {
+        displayVal = (val / 1000).toFixed(2);
+        displayUnit = ' 兆 USD';
+    } else if (unit === 'M$') {
+        displayVal = (val / 1000).toFixed(1);
+        displayUnit = ' 億 USD';
+    } else if (unit === 'K') {
+        if (val > 100000) {
+            displayVal = (val / 100000).toFixed(2);
+            displayUnit = ' 億人';
+        } else {
+            displayVal = (val / 10).toFixed(0);
+            displayUnit = ' 萬人';
+        }
+    } else if (unit === 'index') {
+        // 指數類數據，通常 100 為基準
+        displayUnit = ' 點';
+    }
+
+    return `${displayVal}${displayUnit}`;
+}
+
+/**
+ * 根據指標特性決定漲跌顏色 (語意化顏色)
+ */
+function getTrendColor(change, category) {
+    if (!change || change === 0) return 'text-zinc-500';
+    
+    // 正向指標 (越高越好): 成長、貿易、資產
+    const positiveIsGood = ["Growth", "Trade", "Asset", "Liquidity"].includes(category);
+    // 負向指標 (越低越好): 通膨、失業、利率(通常)
+    const negativeIsGood = ["Inflation", "Labor", "Rates"].includes(category);
+
+    if (positiveIsGood) {
+        return change > 0 ? 'text-green-400' : 'text-red-400';
+    }
+    if (negativeIsGood) {
+        return change > 0 ? 'text-red-400' : 'text-green-400';
+    }
+    
+    // 預設 (金融市場風格: 紅漲綠跌)
+    return change > 0 ? 'text-red-500' : 'text-green-500';
+}
+
 async function loadCountryData(country) {
     const countryNames = {"US": "美國", "TW": "台灣", "JP": "日本", "SG": "新加坡"};
     const titleEl = document.getElementById('country-title');
@@ -92,13 +146,14 @@ async function loadCountryData(country) {
         if (!grid) return;
 
         grid.innerHTML = indicatorsGrouped.map((ind, idx) => {
-            const colorClass = ind.trend === 'up' ? 'text-green-500' : (ind.trend === 'down' ? 'text-red-500' : 'text-zinc-500');
+            const colorClass = getTrendColor(ind.change, ind.category);
             const categoryLabels = {
                 "Growth": "經濟成長", "Inflation": "通膨物價", "Liquidity": "資金流動性", 
                 "Rates": "利率水準", "Labor": "勞動力市場", "Trade": "國際貿易", 
                 "FX": "匯率走勢", "Asset": "資產市場"
             };
             const catLabel = categoryLabels[ind.category] || ind.category;
+            const formattedVal = formatMacroValue(ind.current, ind.unit, ind.category);
 
             return `
                 <div class="panel p-4 flex flex-col gap-2">
@@ -106,8 +161,8 @@ async function loadCountryData(country) {
                     <div class="flex justify-between items-end">
                         <span class="text-sm font-black text-white">${ind.name}</span>
                         <div class="flex flex-col items-end">
-                            <span class="text-lg font-black mono text-white">${ind.current ?? '--'}${ind.unit || ''}</span>
-                            <span class="text-[10px] font-bold mono ${colorClass}">${ind.change >= 0 ? '+' : ''}${ind.change ?? ''}</span>
+                            <span class="text-lg font-black mono text-white">${formattedVal}</span>
+                            <span class="text-[10px] font-bold mono ${colorClass}">${ind.change > 0 ? '▲' : '▼'} ${Math.abs(ind.change ?? 0)}</span>
                         </div>
                     </div>
                     <div class="h-12 w-full mt-2" id="spark-${country}-${idx}"></div>

@@ -18,22 +18,52 @@ def _get(endpoint, params, api_key):
         except Exception: time.sleep(2**attempt)
     return None
 
-def _gen_proxy(label, base_val):
-    series = [SeriesPoint(t=(datetime.now() - timedelta(days=i*30)).strftime('%Y-%m-%d'), 
-                          v=round(base_val + random.uniform(-2, 2) + i*0.1, 2)) for i in range(24)][::-1]
-    return series
+def _gen_proxy(series_id, label, country, category, unit, frequency, key):
+    """當 API 失敗時，生成具備常識基準的模擬數據"""
+    # 根據指標類型決定合理的基準值
+    s_id = series_id.upper()
+    if any(k in s_id for k in ["UNRATE", "UNEMPLOYMENT", "RATE", "PERCENT", "PMI"]):
+        # 失業率/利率類: 3% - 5%
+        base = 3.8 if "UNRATE" in s_id or "UNEMPLOYMENT" in s_id else 2.5
+        if "PMI" in s_id: base = 50.0
+    elif any(k in s_id for k in ["M2", "GDP", "DEBT", "RETAIL", "EXPORTS"]):
+        # 貨幣/產值類: 較大的數值
+        base = 22000 if "US" in country else 5000
+    elif "CPI" in s_id:
+        # 指數類: 100 左右
+        base = 105.0
+    else:
+        base = 100.0
+        
+    series = []
+    start_date = datetime.now() - timedelta(days=24*30)
+    for i in range(24):
+        d = (start_date + timedelta(days=i*30)).strftime("%Y-%m-%d")
+        # 隨機波動: 百分比類用加減，大數值類用乘法
+        if base < 100:
+            v = base + random.uniform(-0.5, 0.5)
+        else:
+            v = base * (1 + (i * 0.002) + random.uniform(-0.01, 0.01))
+        series.append(SeriesPoint(t=d, v=round(v, 2)))
+    
+    cur=series[-1].v; prev=series[-2].v if len(series) > 1 else cur; chg=round(cur-prev, 4)
+    return Indicator(id=key, country=country, category=category, name=label, unit=unit, frequency=frequency,
+        current=cur, previous=prev, change=chg,
+        trend="up" if chg >= 0 else "down",
+        updated_at=series[-1].t, series=series, source="proxy_data")
 
 def fetch_series(series_id, label, country, category, unit, frequency, api_key, key, years=5):
-    start = (datetime.now()-timedelta(days=365*years)).strftime("%Y-%m-%d")
-    data = _get("series/observations", {"series_id":series_id,"observation_start":start,"sort_order":"asc"}, api_key)
-    
     series = []
-    if data:
-        series = [SeriesPoint(t=o["date"], v=round(float(o["value"]), 4)) 
-                  for o in data.get("observations",[]) if o["value"] not in (".","")]
+    # 1. 嘗試官方 API
+    if api_key:
+        start = (datetime.now()-timedelta(days=365*years)).strftime("%Y-%m-%d")
+        data = _get("series/observations", {"series_id":series_id,"observation_start":start,"sort_order":"asc"}, api_key)
+        if data:
+            series = [SeriesPoint(t=o["date"], v=round(float(o["value"]), 4)) 
+                      for o in data.get("observations",[]) if o["value"] not in (".","")]
     
+    # 2. 嘗試免金鑰 Reader
     if not series:
-        # Check for working reader without key or use proxy
         import pandas_datareader.data as web
         try:
             df = web.DataReader(series_id, 'fred', datetime.now() - timedelta(days=365*years))
@@ -42,9 +72,9 @@ def fetch_series(series_id, label, country, category, unit, frequency, api_key, 
                 series = [SeriesPoint(t=t.strftime('%Y-%m-%d'), v=round(float(v), 4)) for t, v in series_raw.items()]
         except Exception: pass
 
+    # 3. 兜底: 使用常識 Proxy
     if not series:
-        base = 100 if "CPI" in series_id else (5 if "RATE" in series_id or "Y2Y" in series_id else 5000)
-        series = _gen_proxy(label, base)
+        return _gen_proxy(series_id, label, country, category, unit, frequency, key)
 
     cur=series[-1].v; prev=series[-2].v if len(series) > 1 else cur; chg=round(cur-prev, 4)
     return Indicator(id=key, country=country, category=category, name=label, unit=unit, frequency=frequency,
@@ -64,11 +94,13 @@ def get_us_gdp(key, api_key):       return fetch_series("GDPC1",          "美�
 def get_us_unemployment(key, api_key): return fetch_series("UNRATE",      "美國失業率", "US","Labor","%","monthly", api_key, key)
 def get_us_nfp(key, api_key):       return fetch_series("PAYEMS",         "美國非農就業", "US","Labor","K","monthly", api_key, key)
 def get_tw_cpi(key, api_key):       return fetch_series("TWCPIALLMINMEI", "台灣 CPI YoY", "TW","Inflation","%","monthly", api_key, key)
-def get_tw_unemployment(key, api_key): return fetch_series("LRUNTTTTTWM156N","台灣失業率", "TW","Labor","%","monthly", api_key, key)
-def get_tw_exports(key, api_key):   return fetch_series("XTEXVA01TWM667S","台灣出口 YoY", "TW","Trade","%","monthly", api_key, key)
-def get_jp_cpi(key, api_key):       return fetch_series("JPNCPIALLMINMEI","日本 CPI YoY", "JP","Inflation","%","monthly", api_key, key)
-def get_jp_unemployment(key, api_key): return fetch_series("LRUNTTTTJPM156N","日本失業率", "JP","Labor","%","monthly", api_key, key)
-def get_jp_m2(key, api_key):        return fetch_series("MYAGM2JPM189N",  "日本 M2 YoY", "JP","Liquidity","%","monthly", api_key, key)
-def get_jp_policy_rate(key, api_key): return fetch_series("IRSTCB01JPM156N","日本政策利率", "JP","Rates","%","monthly", api_key, key)
+def get_tw_unemployment(key, api_key): return fetch_series("LRUNTTTTTWM156N", "台灣失業率", "TW","Labor","%","monthly", api_key, key)
+def get_jp_cpi(key, api_key):       return fetch_series("JPNCPIALLMINMEI", "日本 CPI YoY", "JP","Inflation","%","monthly", api_key, key)
+def get_jp_unemployment(key, api_key): return fetch_series("LRUNTTTTJPM156N", "日本失業率", "JP","Labor","%","monthly", api_key, key)
+def get_jp_policy_rate(key, api_key): return fetch_series("INTDSRJPM193N", "日本政策利率", "JP","Rates","%","monthly", api_key, key)
+def get_jp_m2(key, api_key):        return fetch_series("JPAM2AGM189N",   "日本 M2 YoY", "JP","Liquidity","%","monthly", api_key, key)
+def get_jp_gdp(key, api_key):        return fetch_series("JPNGDPNQDSMEI", "日本 GDP YoY", "JP","Growth","%","monthly", api_key, key)
 def get_sg_cpi(key, api_key):       return fetch_series("SGPCPIALLMINMEI","新加坡 CPI YoY", "SG","Inflation","%","monthly", api_key, key)
+def get_sg_gdp(key, api_key):       return fetch_series("SGPGDPRQPSMEI", "新加坡 GDP YoY", "SG","Growth","%","monthly", api_key, key)
+def get_sg_unemployment(key, api_key): return fetch_series("SG_UNRATE", "新加坡失業率", "SG","Labor","%","monthly", api_key, key)
 def get_cn_m2(key, api_key):        return fetch_series("MYAGM2CNM189N",  "中國 M2 YoY", "CN","Liquidity","%","monthly", api_key, key)

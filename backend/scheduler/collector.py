@@ -49,30 +49,30 @@ def collect_market():
                     all_tasks.append((cat, name, sym, country))
             
             random.shuffle(all_tasks)
-            
             for cat, name, sym, country in all_tasks:
-                # 修正：使用極長 TTL (7天) 確保能讀取到現有快取
                 current_cache = cache.get("market_all", 7*24*3600) or {}
-                
-                needs_update = is_market_open(country)
-                if not needs_update:
-                    cached_cat = current_cache.get(cat, {})
-                    if name not in cached_cat:
-                        needs_update = True
-                
+
+                # 判定：是否需要更新？ (開盤中 OR 快取內沒資料 OR 快取內資料是空的/null)
+                cached_item = current_cache.get(cat, {}).get(name, {})
+                has_data = cached_item.get("price") is not None
+
+                needs_update = is_market_open(country) or not has_data
+
                 if needs_update:
                     try:
+                        logger.info(f"  [Market] 正在抓取: {name} ({sym})...")
                         series = yf_src.get_price_series(sym, period="1y")
                         quote  = yf_src.get_quote(sym, name, country=country)
-                        
+
                         if cat not in current_cache: current_cache[cat] = {}
                         current_cache[cat][name] = {**quote.to_dict(), "series": series[-60:]}
-                        
+
+                        # 抓到一筆存一筆，確保持久化
                         cache.set("market_all", current_cache)
-                        logger.info(f"  [Market] 同步完成: {name}")
-                        time.sleep(random.uniform(5, 10))
+                        time.sleep(random.uniform(3, 8)) # 稍微加快初次填滿速度
                     except Exception as e:
                         logger.warning(f"  [Market] {name} 失敗: {e}")
+
             
             logger.info("✅ 市場行情一輪同步結束。")
         except Exception as e:

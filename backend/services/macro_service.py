@@ -13,12 +13,12 @@ _TTL = {
 }
 
 COUNTRY_MACRO_KEYS = {
-    "TW": ["TW_CPI", "TW_UNEMPLOYMENT", "TW_EXPORTS", "TW_M2", "TW_M1B"],
+    "TW": ["TW_CPI", "TW_UNEMPLOYMENT", "TW_EXPORTS", "TW_M2", "TW_M1B", "TW_PMI", "TW_POLICY_RATE"],
     "US": ["US_M2", "US_CPI", "US_CORE_CPI", "US_PPI", "US_FED_RATE",
            "US_10Y", "US_2Y", "US_10Y2Y", "US_GDP_YOY", "US_UNEMPLOYMENT",
            "US_NFP", "US_RETAIL"],
-    "JP": ["JP_CPI", "JP_UNEMPLOYMENT", "JP_M2", "JP_POLICY_RATE"],
-    "SG": ["SG_CPI"],
+    "JP": ["JP_CPI", "JP_UNEMPLOYMENT", "JP_M2", "JP_POLICY_RATE", "JP_GDP_YOY"],
+    "SG": ["SG_CPI", "SG_GDP_YOY", "SG_UNEMPLOYMENT"],
 }
 
 COUNTRIES = ["US", "TW", "JP", "SG"]
