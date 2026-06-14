@@ -28,13 +28,26 @@ def get_quote(symbol: str, name: str, country: str = "US") -> StockQuote:
                           volume=None, market_cap=None, updated_at=today,
                           error="yf.Ticker 建立失敗")
     try:
-        info = t.fast_info
-        price = round(float(info.last_price), 2) if info.last_price else None
-        prev  = float(info.previous_close) if info.previous_close else price
-        change = round(price - prev, 2) if (price and prev) else None
-        pct    = round(change / prev * 100, 2) if (change and prev) else None
-        mktcap = round(float(info.market_cap) / 1e8, 2) if info.market_cap else None  # 億
-        vol    = float(info.three_month_average_volume) if info.three_month_average_volume else None
+        # 修正：不使用 fast_info，改用 history(1d) 獲取最新行情
+        df = t.history(period="5d") # 抓 5 天確保有開盤日
+        if df.empty:
+             return StockQuote(ticker=symbol, name=name, country=country,
+                          price=None, change=None, pct=None,
+                          volume=None, market_cap=None, updated_at=today,
+                          error="無價格數據")
+        
+        price = round(float(df["Close"].iloc[-1]), 2)
+        prev  = float(df["Close"].iloc[-2]) if len(df) > 1 else price
+        change = round(price - prev, 2)
+        pct    = round(change / prev * 100, 2) if prev != 0 else 0
+        
+        # Market Cap 嘗試從 info 抓
+        mktcap = None
+        try:
+            mktcap = round(float(t.info.get("marketCap", 0)) / 1e8, 2)
+        except: pass
+        
+        vol = float(df["Volume"].iloc[-1])
         return StockQuote(ticker=symbol, name=name, country=country,
                           price=price, change=change, pct=pct,
                           volume=vol, market_cap=mktcap, updated_at=today)

@@ -5,11 +5,11 @@ from config import CACHE_DIR, SCHEDULE
 
 cache = FileCache(CACHE_DIR)
 
-# TTL（秒）：比排程間隔稍長，避免剛好過期時短暫空值
+# TTL（秒）：設為極長（例如 7 天），因為 Spirit 5 引擎會主動更新，我們希望 UI 永遠顯示最後一份資料
 _TTL = {
-    "market":       SCHEDULE["market_minutes"] * 60 + 300,
-    "macro":        SCHEDULE["macro_hours"] * 3600 + 3600,
-    "fundamentals": SCHEDULE["fundamentals_hours"] * 3600 + 7200,
+    "market":       7 * 24 * 3600,
+    "macro":        7 * 24 * 3600,
+    "fundamentals": 7 * 24 * 3600,
 }
 
 COUNTRY_MACRO_KEYS = {
