@@ -130,7 +130,7 @@ function getTrendColor(change, category) {
 }
 
 async function loadCountryData(country) {
-    const countryNames = {"US": "美國", "TW": "台灣", "JP": "日本", "SG": "新加坡"};
+    const countryNames = {"US": "美國", "TW": "台灣", "JP": "日本", "SG": "新加坡", "CN": "中國"};
     const titleEl = document.getElementById('country-title');
     if (titleEl) titleEl.innerText = `${countryNames[country] || country} 總體經濟儀表板`;
     
@@ -186,7 +186,7 @@ async function loadCountryData(country) {
 function renderCountrySidebar() {
     const sidebar = document.getElementById('sidebar-content');
     if (!sidebar) return;
-    const countries = {"US": "美國", "TW": "台灣", "JP": "日本", "SG": "新加坡"};
+    const countries = {"US": "美國", "TW": "台灣", "JP": "日本", "SG": "新加坡", "CN": "中國"};
     sidebar.innerHTML = Object.entries(countries).map(([id, name]) => `
         <button onclick="loadCountryData('${id}')" class="w-full text-left p-4 hover:bg-zinc-800 border-b border-zinc-800 font-bold" id="c-${id}">${name}</button>
     `).join('');

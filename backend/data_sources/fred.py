@@ -2,6 +2,7 @@ import os, time, logging, requests, random
 from datetime import datetime, timedelta
 from typing import Optional, List
 from models import Indicator, SeriesPoint
+from .fetcher import requests_get # 使用帶有 User-Agent 的請求器
 
 logger = logging.getLogger(__name__)
 BASE = "https://api.stlouisfed.org/fred"
@@ -11,7 +12,7 @@ def _get(endpoint, params, api_key):
     params.update({"api_key": api_key, "file_type": "json"})
     for attempt in range(3):
         try:
-            r = requests.get(f"{BASE}/{endpoint}", params=params, timeout=15)
+            r = requests_get(f"{BASE}/{endpoint}", params=params, timeout=15)
             if r.status_code == 200: return r.json()
             if r.status_code == 429: time.sleep(2**attempt*5)
             else: return None
@@ -102,5 +103,5 @@ def get_jp_m2(key, api_key):        return fetch_series("JPAM2AGM189N",   "日�
 def get_jp_gdp(key, api_key):        return fetch_series("JPNGDPNQDSMEI", "日本 GDP YoY", "JP","Growth","%","monthly", api_key, key)
 def get_sg_cpi(key, api_key):       return fetch_series("SGPCPIALLMINMEI","新加坡 CPI YoY", "SG","Inflation","%","monthly", api_key, key)
 def get_sg_gdp(key, api_key):       return fetch_series("SGPGDPRQPSMEI", "新加坡 GDP YoY", "SG","Growth","%","monthly", api_key, key)
-def get_sg_unemployment(key, api_key): return fetch_series("SG_UNRATE", "新加坡失業率", "SG","Labor","%","monthly", api_key, key)
+def get_sg_unemployment(key, api_key): return fetch_series("LRUNTTTTSGM156N", "新加坡失業率", "SG","Labor","%","monthly", api_key, key)
 def get_cn_m2(key, api_key):        return fetch_series("MYAGM2CNM189N",  "中國 M2 YoY", "CN","Liquidity","%","monthly", api_key, key)
