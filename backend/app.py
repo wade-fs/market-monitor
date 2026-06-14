@@ -39,32 +39,29 @@ def api_global():
     """首頁 KPI + 主要市場行情 (配合 V4 前端)"""
     overview = macro_service.get_global_overview()
     
-    # 安全地獲取市場資料
+    # 獲取市場資料 (從 overview.indices 中提取)
     indices = overview.get("indices") or {}
     
-    # 計算風險評分 (防呆：處理 None 或 空字典)
+    # 計算風險評分
     up_count = 0
     total = 0
-    for m in indices.values():
-        total += 1
-        # 如果 pct 是 None，視為不變 (0)
-        pct = m.get("pct")
-        if pct is not None and pct > 0:
-            up_count += 1
-            
-    score = round((up_count / total * 100) if total > 0 else 50)
-
-    # 轉換市場行情格式
     major_markets = []
+    
     for name, data in indices.items():
-        cur_val = data.get("current")
+        total += 1
         pct_val = data.get("pct")
+        if pct_val is not None and pct_val > 0:
+            up_count += 1
+        
+        cur_val = data.get("price")
         major_markets.append({
             "name": name, 
             "country": data.get("country", "Global"), 
             "current": f"{cur_val:,}" if cur_val is not None and isinstance(cur_val, (int, float)) else "--", 
             "trend": "up" if (pct_val or 0) > 0 else "down"
         })
+            
+    score = round((up_count / total * 100) if total > 0 else 50)
 
     return {
         "risk_score": score,

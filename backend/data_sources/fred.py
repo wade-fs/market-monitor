@@ -46,10 +46,10 @@ def fetch_series(series_id, label, country, category, unit, frequency, api_key, 
         base = 100 if "CPI" in series_id else (5 if "RATE" in series_id or "Y2Y" in series_id else 5000)
         series = _gen_proxy(label, base)
 
-    cur=series[-1].v; prev=series[-2].v; chg=round(cur-prev, 4)
+    cur=series[-1].v; prev=series[-2].v if len(series) > 1 else cur; chg=round(cur-prev, 4)
     return Indicator(id=key, country=country, category=category, name=label, unit=unit, frequency=frequency,
         current=cur, previous=prev, change=chg,
-        trend="up" if chg>0 else ("down" if chg<0 else "flat"),
+        trend="up" if chg >= 0 else "down",
         updated_at=series[-1].t, series=series, source="fred_with_proxy")
 
 # ── 各指標封裝函式 ───────────────────────────────────────────────────
